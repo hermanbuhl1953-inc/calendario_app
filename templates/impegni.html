@@ -292,13 +292,14 @@ function modificaImpegno(id) {
 }
 
 function salvaImpegno() {
-    const id = $('#impegno_id').val();
+    const id = #impegno_id.val();
     
     // Validazione
-    const istruttoreId = $('#istruttore_id').val();
-    const attivitaId = $('#attivita_id').val();
-    const dataInizio = $('#data_inizio').val();
-    const giorniLavorativi = $('#giorni_lavorativi').val();
+    const istruttoreId = #istruttore_id.val();
+    const attivitaId = #attivita_id.val();
+    const dataInizio = #data_inizio.val();
+    const giorniLavorativi = #giorni_lavorativi.val();
+    const dataFine = $("#data_fine").val();
     
     if (!istruttoreId || !attivitaId || !dataInizio) {
         alert('Compila tutti i campi obbligatori (con *)!');
@@ -492,3 +493,4 @@ function eliminaSostituzione(sostId) {
 </mso:CustomDocumentProperties>
 </xml><![endif]-->
 <title></title></head>
+
