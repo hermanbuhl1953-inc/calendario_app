@@ -22,6 +22,26 @@ try:
 except Exception as e:
     print(f"⚠️ init_db() error: {e}")
 
+
+def giorni_lavorativi_tra(data_inizio, data_fine):
+    """Calcola giorni lavorativi (lunedì-venerdì) tra due date"""
+    if not data_inizio or not data_fine:
+        return 0
+    try:
+        start = datetime.strptime(data_inizio, '%Y-%m-%d').date()
+        end = datetime.strptime(data_fine, '%Y-%m-%d').date()
+    except:
+        return 0
+    if end < start:
+        return 0
+    giorni = 0
+    current = start
+    while current <= end:
+        if current.weekday() < 5:
+            giorni += 1
+        current += timedelta(days=1)
+    return giorni
+
 # Nomi mesi in italiano
 MESI_ITALIANI = [
     '', 'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
