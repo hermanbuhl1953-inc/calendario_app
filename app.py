@@ -149,7 +149,7 @@ def calendario(anno):
                          sostituzioni=sostituzioni_anno,
                          festivi=festivi)
 
-@app.route('/corso/<id_corso>')
+@app.route('/corso/<path:id_corso>')
 def corso(id_corso):
     """Pagina dettaglio corso con calendario"""
     conn = get_db()
