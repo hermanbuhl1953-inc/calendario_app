@@ -1097,6 +1097,17 @@ def audit_log():
 # MAIN
 # ============================================================================
 
+@app.route('/__routes')
+def __routes():
+    try:
+        rules = sorted([{
+            'rule': str(r.rule),
+            'methods': sorted(list(r.methods - set(['HEAD', 'OPTIONS'])))
+        } for r in app.url_map.iter_rules()], key=lambda x: x['rule'])
+        return jsonify({'routes': rules})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     print("🚀 Avvio Calendario Istruttori...")
     print("📍 Accedi a: http://localhost:5000")
