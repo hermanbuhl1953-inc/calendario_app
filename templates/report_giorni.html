@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Report Giorni Lavoro - Calendario Istruttori{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-chart-bar"></i> Report Giorni Lavoro per Istruttore</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <label class="form-label"><strong>Seleziona Istruttore:</strong></label>
+        <select class="form-select form-select-lg" id="selIstruttore">
+            <option value="">-- Seleziona Istruttore --</option>
+            {% for istr in istruttori %}
+            <option value="{{ istr.id }}">{{ istr.nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div id="reportContainer" style="display: none;">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 id="nomeIstruttore"></h4>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% for anno in anni %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5>Anno {{ anno }}</h5>
+                </div>
+                <div class="card-body" id="report{{ anno }}">
+                    <p class="text-center"><i class="fas fa-spinner fa-spin"></i> Caricamento...</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-chart-line"></i> Riepilogo Complessivo</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartTotali" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-info-circle"></i> Come Funziona</h5>
+            <p>Questo report calcola i giorni lavorativi effettivi per ogni istruttore, anno per anno.</p>
+            <ul>
+                <li><strong>Giorni Lavorativi:</strong> Solo Lunedì-Venerdì (esclusi festivi)</li>
+                <li><strong>Sostituzioni OUT:</strong> Giorni in cui l'istruttore è stato sostituito (sottratti)</li>
+                <li><strong>Sostituzioni IN:</strong> Giorni in cui ha sostituito altri (aggiunti)</li>
+                <li><strong>Per Categoria:</strong> Suddivisione per tipo attività (Corsi, Esami, etc.)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const anni = {{ anni|tojson }};
+let chartTotali = null;
+
+$('#selIstruttore').on('change', function() {
+    const istruttoreId = $(this).val();
+    if (!istruttoreId) {
+        $('#reportContainer').hide();
+        return;
+    }
+    
+    const nomeIstruttore = $(this).find('option:selected').text();
+    $('#nomeIstruttore').text('Istruttore: ' + nomeIstruttore);
+    $('#reportContainer').show();
+    
+    // Carica report per ogni anno
+    let totaliAnni = [];
+    let promises = anni.map(anno => {
+        return $.getJSON(`/api/report-giorni?istruttore_id=${istruttoreId}&anno=${anno}`)
+            .then(data => {
+                mostraReportAnno(anno, data);
+                return {anno: anno, totale: data.totale_giorni};
+            });
+    });
+    
+    // Quando tutti i report sono caricati, mostra grafico
+    Promise.all(promises).then(results => {
+        mostraGraficoTotali(results);
+    });
+});
+
+function mostraReportAnno(anno, data) {
+    const html = `
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <tr>
+                    <td><strong>Totale Giorni:</strong></td>
+                    <td class="text-end"><span class="badge bg-primary fs-5">${data.totale_giorni}</span></td>
+                </tr>
+                <tr class="table-light">
+                    <td colspan="2"><strong>Per Categoria:</strong></td>
+                </tr>
+                <tr>
+                    <td>🟢 Corsi:</td>
+                    <td class="text-end">${data.totali_categoria.CORSO}</td>
+                </tr>
+                <tr>
+                    <td>🔵 Esami:</td>
+                    <td class="text-end">${data.totali_categoria.ESAME}</td>
+                </tr>
+                <tr>
+                    <td>🟣 Tirocinio:</td>
+                    <td class="text-end">${data.totali_categoria.TIROCINIO}</td>
+                </tr>
+                <tr>
+                    <td>🟢 Addestramento:</td>
+                    <td class="text-end">${data.totali_categoria.ADDESTRAMENTO}</td>
+                </tr>
+                <tr>
+                    <td>🟠 Pratiche:</td>
+                    <td class="text-end">${data.totali_categoria.PRATICHE}</td>
+                </tr>
+                <tr>
+                    <td>⚫ Altro:</td>
+                    <td class="text-end">${data.totali_categoria.ALTRO}</td>
+                </tr>
+                ${data.sostituzioni_out > 0 ? `
+                <tr class="table-warning">
+                    <td>⚠️ Sostituzioni OUT:</td>
+                    <td class="text-end">-${data.sostituzioni_out}</td>
+                </tr>
+                ` : ''}
+                ${data.sostituzioni_in > 0 ? `
+                <tr class="table-success">
+                    <td>✅ Sostituzioni IN:</td>
+                    <td class="text-end">+${data.sostituzioni_in}</td>
+                </tr>
+                ` : ''}
+            </table>
+        </div>
+    `;
+    
+    $(`#report${anno}`).html(html);
+}
+
+function mostraGraficoTotali(results) {
+    if (chartTotali) {
+        chartTotali.destroy();
+    }
+    
+    const ctx = $('#chartTotali')[0].getContext('2d');
+    chartTotali = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: results.map(r => r.anno),
+            datasets: [{
+                label: 'Giorni Lavorativi',
+                data: results.map(r => r.totale),
+                backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                borderColor: 'rgba(52, 152, 219, 1)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Giorni'
+                    }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Giorni Lavorativi per Anno',
+                    font: {
+                        size: 16
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}
+<html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:xd_Signature msdt:dt="string"></mso:xd_Signature>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor>
+<mso:Order msdt:dt="string">193000.000000000</mso:Order>
+<mso:ComplianceAssetId msdt:dt="string"></mso:ComplianceAssetId>
+<mso:TemplateUrl msdt:dt="string"></mso:TemplateUrl>
+<mso:xd_ProgID msdt:dt="string"></mso:xd_ProgID>
+<mso:_ExtendedDescription msdt:dt="string"></mso:_ExtendedDescription>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author>
+<mso:TriggerFlowInfo msdt:dt="string"></mso:TriggerFlowInfo>
+<mso:ContentTypeId msdt:dt="string">0x0101002AC836DBC1B2D14B9CF1B153B23CAC72</mso:ContentTypeId>
+<mso:_SourceUrl msdt:dt="string"></mso:_SourceUrl>
+<mso:_SharedFileIndex msdt:dt="string"></mso:_SharedFileIndex>
+<mso:TaxCatchAll msdt:dt="string"></mso:TaxCatchAll>
+<mso:MediaServiceImageTags msdt:dt="string"></mso:MediaServiceImageTags>
+<mso:lcf76f155ced4ddcb4097134ff3c332f msdt:dt="string"></mso:lcf76f155ced4ddcb4097134ff3c332f>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+<title></title></head>

@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Impegni - Calendario Istruttori{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-list"></i> Gestione Impegni</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#modalImpegno" onclick="nuovoImpegno()">
+            <i class="fas fa-plus"></i> Aggiungi Nuovo Impegno
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-table"></i> Lista Impegni</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tabellaImpegni">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>ID Corso</th>
+                                <th>Istruttore</th>
+                                <th>Attività</th>
+                                <th>Data Inizio</th>
+                                <th>Giorni</th>
+                                <th>Data Fine</th>
+                                <th>Note</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for imp in impegni %}
+                            <tr>
+                                <td>{{ imp.id }}</td>
+                                <td>
+                                    {% if imp.id_corso %}
+                                        <a href="/corso/{{ imp.id_corso }}" class="badge bg-info">
+                                            {{ imp.id_corso }}
+                                        </a>
+                                    {% endif %}
+                                </td>
+                                <td>{{ imp.istruttore_nome }}</td>
+                                <td>
+                                    <span class="badge" style="background-color: #{{ imp.colore }};">
+                                        {{ imp.attivita_nome }}
+                                    </span>
+                                </td>
+                                <td>{{ imp.data_inizio }}</td>
+                                <td>{{ imp.giorni_lavorativi }}</td>
+                                <td>{{ imp.data_fine }}</td>
+                                <td>{{ imp.note or '-' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning" onclick="modificaImpegno({{ imp.id }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-info" onclick="gestioneSostituzioni({{ imp.id }}, '{{ imp.istruttore_nome }}', '{{ imp.attivita_nome }}', '{{ imp.data_inizio }}', '{{ imp.data_fine }}')">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="eliminaImpegno({{ imp.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Impegno -->
+<div class="modal fade" id="modalImpegno" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalTitle">Nuovo Impegno</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formImpegno">
+                    <input type="hidden" id="impegno_id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">ID Corso (opzionale)</label>
+                            <input type="text" class="form-control" id="id_corso" 
+                                   placeholder="es. 01_25">
+                            <small class="text-muted">Lascia vuoto per impegni singoli (ferie, malattia, etc.)</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Istruttore *</label>
+                            <select class="form-select" id="istruttore_id" required>
+                                <option value="">Seleziona...</option>
+                                {% for istr in istruttori %}
+                                <option value="{{ istr.id }}">{{ istr.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Attività *</label>
+                            <select class="form-select" id="attivita_id" required>
+                                <option value="">Seleziona...</option>
+                                {% for att in attivita %}
+                                <option value="{{ att.id }}" data-colore="{{ att.colore }}">
+                                    {{ att.nome }} ({{ att.categoria }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Data Inizio *</label>
+                            <input type="date" class="form-control" id="data_inizio" required>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Giorni Lavorativi *</label>
+                            <input type="number" class="form-control" id="giorni_lavorativi" 
+                                   min="1" required>
+                        </div>
+                        
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">Extra 1</label>
+                            <input type="date" class="form-control" id="giorno_extra_1">
+                            <small class="text-muted">Weekend/Festivo</small>
+                        </div>
+                        
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">Extra 2</label>
+                            <input type="date" class="form-control" id="giorno_extra_2">
+                        </div>
+                        
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label">Extra 3</label>
+                            <input type="date" class="form-control" id="giorno_extra_3">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Note</label>
+                        <textarea class="form-control" id="note" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Annulla
+                </button>
+                <button type="button" class="btn btn-primary" onclick="salvaImpegno()">
+                    <i class="fas fa-save"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Sostituzioni -->
+<div class="modal fade" id="modalSostituzioni" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalSostituzioniTitle">Gestione Sostituzioni</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="sost_impegno_id">
+                
+                <div class="alert alert-info">
+                    <strong>Impegno:</strong> <span id="sost_info"></span><br>
+                    <strong>Periodo:</strong> <span id="sost_periodo"></span>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <h6>Sostituzioni Esistenti:</h6>
+                        <div id="listaSostituzioni">
+                            <p class="text-muted"><em>Caricamento...</em></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6>Aggiungi Nuova Sostituzione:</h6>
+                <form id="formSostituzione">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Sostituzione *</label>
+                            <input type="date" class="form-control" id="sost_data" required>
+                            <small class="text-muted">Deve essere nell'intervallo dell'impegno</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Istruttore Sostituto *</label>
+                            <select class="form-select" id="sost_istruttore_sostituto" required>
+                                <option value="">Seleziona...</option>
+                                {% for istr in istruttori %}
+                                <option value="{{ istr.id }}">{{ istr.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Note (opzionale)</label>
+                        <textarea class="form-control" id="sost_note" rows="2" 
+                                  placeholder="es. Congedo personale"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Chiudi
+                </button>
+                <button type="button" class="btn btn-info" onclick="aggiungiSostituzione()">
+                    <i class="fas fa-plus"></i> Aggiungi Sostituzione
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let modalImpegno = null;
+let modalInstance = null;
+
+$(document).ready(function() {
+    modalImpegno = $('#modalImpegno');
+    modalInstance = new bootstrap.Modal(modalImpegno[0]);
+});
+
+function nuovoImpegno() {
+    $('#modalTitle').text('Nuovo Impegno');
+    $('#formImpegno')[0].reset();
+    $('#impegno_id').val('');
+}
+
+function modificaImpegno(id) {
+    // Carica dati impegno
+    $.getJSON('/api/impegni', function(data) {
+        const impegno = data.find(i => i.id === id);
+        if (impegno) {
+            $('#modalTitle').text('Modifica Impegno');
+            $('#impegno_id').val(impegno.id);
+            $('#id_corso').val(impegno.id_corso || '');
+            $('#istruttore_id').val(impegno.istruttore_id);
+            $('#attivita_id').val(impegno.attivita_id);
+            $('#data_inizio').val(impegno.data_inizio);
+            $('#giorni_lavorativi').val(impegno.giorni_lavorativi);
+            $('#giorno_extra_1').val(impegno.giorno_extra_1 || '');
+            $('#giorno_extra_2').val(impegno.giorno_extra_2 || '');
+            $('#giorno_extra_3').val(impegno.giorno_extra_3 || '');
+            $('#note').val(impegno.note || '');
+            
+            modalInstance.show();
+        }
+    }).fail(function() {
+        alert('Errore nel caricare i dati dell\'impegno!');
+    });
+}
+
+function salvaImpegno() {
+    const id = $('#impegno_id').val();
+    
+    // Validazione
+    const istruttoreId = $('#istruttore_id').val();
+    const attivitaId = $('#attivita_id').val();
+    const dataInizio = $('#data_inizio').val();
+    const giorniLavorativi = $('#giorni_lavorativi').val();
+    
+    if (!istruttoreId || !attivitaId || !dataInizio || !giorniLavorativi) {
+        alert('Compila tutti i campi obbligatori (con *)!');
+        return;
+    }
+    
+    const data = {
+        id_corso: $('#id_corso').val(),
+        istruttore_id: parseInt(istruttoreId),
+        attivita_id: parseInt(attivitaId),
+        data_inizio: dataInizio,
+        giorni_lavorativi: parseInt(giorniLavorativi),
+        giorno_extra_1: $('#giorno_extra_1').val() || null,
+        giorno_extra_2: $('#giorno_extra_2').val() || null,
+        giorno_extra_3: $('#giorno_extra_3').val() || null,
+        note: $('#note').val()
+    };
+    
+    const url = id ? `/api/impegni/${id}` : '/api/impegni';
+    const method = id ? 'PUT' : 'POST';
+    
+    $.ajax({
+        url: url,
+        method: method,
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function() {
+            alert('Impegno salvato con successo!');
+            location.reload();
+        },
+        error: function(xhr) {
+            console.error('Errore:', xhr);
+            const errorMsg = xhr.responseJSON?.error || xhr.responseText || 'Errore sconosciuto';
+            alert('Errore nel salvare l\'impegno: ' + errorMsg);
+        }
+    });
+}
+
+function eliminaImpegno(id) {
+    if (confirm('Sei sicuro di voler eliminare questo impegno?')) {
+        $.ajax({
+            url: `/api/impegni/${id}`,
+            method: 'DELETE',
+            success: function() {
+                alert('Impegno eliminato!');
+                location.reload();
+            },
+            error: function() {
+                alert('Errore nell\'eliminare l\'impegno!');
+            }
+        });
+    }
+}
+
+// ============================================================================
+// GESTIONE SOSTITUZIONI
+// ============================================================================
+
+let modalSostituzioni = null;
+let modalSostituzioniInstance = null;
+
+$(document).ready(function() {
+    modalSostituzioni = $('#modalSostituzioni');
+    modalSostituzioniInstance = new bootstrap.Modal(modalSostituzioni[0]);
+});
+
+function gestioneSostituzioni(impegnoId, istruttore, attivita, dataInizio, dataFine) {
+    $('#sost_impegno_id').val(impegnoId);
+    $('#sost_info').text(`${istruttore} - ${attivita}`);
+    $('#sost_periodo').text(`dal ${dataInizio} al ${dataFine}`);
+    
+    // Imposta min/max per il date picker
+    $('#sost_data').attr('min', dataInizio);
+    $('#sost_data').attr('max', dataFine);
+    
+    // Carica sostituzioni esistenti
+    caricaSostituzioni(impegnoId);
+    
+    // Reset form
+    $('#formSostituzione')[0].reset();
+    
+    modalSostituzioniInstance.show();
+}
+
+function caricaSostituzioni(impegnoId) {
+    $.getJSON(`/api/sostituzioni?impegno_id=${impegnoId}`, function(data) {
+        if (data.length === 0) {
+            $('#listaSostituzioni').html('<p class="text-muted"><em>Nessuna sostituzione registrata</em></p>');
+        } else {
+            let html = '<div class="list-group">';
+            data.forEach(sost => {
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>${sost.data_sostituzione}</strong><br>
+                                <span class="text-muted">
+                                    ${sost.istruttore_originale} → ${sost.istruttore_sostituto}
+                                </span>
+                                ${sost.note ? `<br><small>${sost.note}</small>` : ''}
+                            </div>
+                            <button class="btn btn-sm btn-danger" onclick="eliminaSostituzione(${sost.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            $('#listaSostituzioni').html(html);
+        }
+    });
+}
+
+function aggiungiSostituzione() {
+    const impegnoId = $('#sost_impegno_id').val();
+    const data = $('#sost_data').val();
+    const sostitutoId = $('#sost_istruttore_sostituto').val();
+    const note = $('#sost_note').val();
+    
+    if (!data || !sostitutoId) {
+        alert('Compila tutti i campi obbligatori!');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/sostituzioni',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            impegno_id: parseInt(impegnoId),
+            data_sostituzione: data,
+            istruttore_sostituto_id: parseInt(sostitutoId),
+            note: note
+        }),
+        success: function() {
+            alert('Sostituzione aggiunta!');
+            $('#formSostituzione')[0].reset();
+            caricaSostituzioni(impegnoId);
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON?.error || 'Errore sconosciuto';
+            alert('Errore: ' + error);
+        }
+    });
+}
+
+function eliminaSostituzione(sostId) {
+    if (confirm('Eliminare questa sostituzione?')) {
+        const impegnoId = $('#sost_impegno_id').val();
+        
+        $.ajax({
+            url: `/api/sostituzioni/${sostId}`,
+            method: 'DELETE',
+            success: function() {
+                alert('Sostituzione eliminata!');
+                caricaSostituzioni(impegnoId);
+            },
+            error: function() {
+                alert('Errore nell\'eliminare la sostituzione!');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
+<html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:xd_Signature msdt:dt="string"></mso:xd_Signature>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor>
+<mso:Order msdt:dt="string">192700.000000000</mso:Order>
+<mso:ComplianceAssetId msdt:dt="string"></mso:ComplianceAssetId>
+<mso:TemplateUrl msdt:dt="string"></mso:TemplateUrl>
+<mso:xd_ProgID msdt:dt="string"></mso:xd_ProgID>
+<mso:_ExtendedDescription msdt:dt="string"></mso:_ExtendedDescription>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author>
+<mso:TriggerFlowInfo msdt:dt="string"></mso:TriggerFlowInfo>
+<mso:ContentTypeId msdt:dt="string">0x0101002AC836DBC1B2D14B9CF1B153B23CAC72</mso:ContentTypeId>
+<mso:_SourceUrl msdt:dt="string"></mso:_SourceUrl>
+<mso:_SharedFileIndex msdt:dt="string"></mso:_SharedFileIndex>
+<mso:TaxCatchAll msdt:dt="string"></mso:TaxCatchAll>
+<mso:MediaServiceImageTags msdt:dt="string"></mso:MediaServiceImageTags>
+<mso:lcf76f155ced4ddcb4097134ff3c332f msdt:dt="string"></mso:lcf76f155ced4ddcb4097134ff3c332f>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+<title></title></head>

@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}Corso {{ id_corso }} - Calendario Istruttori{% endblock %}
+
+{% block extra_head %}
+<style>
+.calendario-corso {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.calendario-corso table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.75rem;
+}
+
+.calendario-corso th,
+.calendario-corso td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+    min-width: 80px;
+    height: 60px;
+    vertical-align: middle;
+}
+
+.calendario-corso thead th {
+    background-color: #34495E;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 0.7rem;
+}
+
+.calendario-corso tbody th {
+    background-color: #ECF0F1;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    font-weight: bold;
+    text-align: left;
+    padding-left: 12px;
+    min-width: 150px;
+}
+
+.cella-corso {
+    cursor: pointer;
+    transition: all 0.2s;
+    color: white;
+    font-weight: bold;
+    font-size: 0.65rem;
+    line-height: 1.2;
+}
+
+.cella-corso:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+}
+
+.cella-vuota {
+    background-color: white;
+}
+
+.giorno-weekend {
+    background-color: #f8f9fa;
+}
+
+.weekend-header {
+    background-color: #95a5a6 !important;
+    color: white !important;
+}
+
+.istruttore-nome {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attivita-nome-cella {
+    display: block;
+    font-size: 0.6rem;
+    margin-top: 2px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <a href="/vista_corsi" class="btn btn-secondary mb-3">
+            <i class="fas fa-arrow-left"></i> Torna a Vista Corsi
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h3><i class="fas fa-graduation-cap"></i> CORSO {{ id_corso }}</h3>
+            </div>
+            <div class="card-body">
+                <!-- Info Riepilogo -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-calendar-day"></i> Periodo</h6>
+                                <p class="mb-1"><strong>Inizio:</strong> {{ data_inizio }}</p>
+                                <p class="mb-0"><strong>Fine:</strong> {{ data_fine }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-clock"></i> Durata</h6>
+                                <p class="mb-1"><strong>Totale:</strong> {{ num_giorni }} giorni</p>
+                                <p class="mb-0"><strong>Lavorativi:</strong> {{ impegni|sum(attribute='giorni_lavorativi') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-users"></i> Istruttori</h6>
+                                <p class="mb-0"><strong>N° Impegni:</strong> {{ impegni|length }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calendario Visivo -->
+                <h5><i class="fas fa-calendar-alt"></i> Calendario Corso - Chi fa Cosa</h5>
+                <div class="calendario-corso">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Istruttore / Giorno</th>
+                                {% for giorno in giorni %}
+                                <th class="{% if giorno.giorno_settimana in ['Sab', 'Dom'] %}weekend-header{% endif %}">
+                                    {{ giorno.giorno }}<br>
+                                    <small>{{ giorno.giorno_settimana }}</small>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for imp in impegni %}
+                            <tr>
+                                <th class="istruttore-nome">{{ imp.istruttore_nome }}</th>
+                                {% for giorno in giorni %}
+                                <td id="cella-{{ imp.istruttore_id }}-{{ giorno.indice }}" 
+                                    class="cella-vuota {% if giorno.giorno_settimana in ['Sab', 'Dom'] %}giorno-weekend{% endif %}">
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Timeline Attività -->
+                <div class="mt-5">
+                    <h5><i class="fas fa-timeline"></i> Timeline Attività</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Istruttore</th>
+                                    <th>Data Inizio</th>
+                                    <th>Data Fine</th>
+                                    <th>Attività</th>
+                                    <th>Giorni Lavorativi</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for imp in impegni %}
+                                <tr>
+                                    <td>{{ imp.istruttore_nome }}</td>
+                                    <td>{{ imp.data_inizio }}</td>
+                                    <td>{{ imp.data_fine }}</td>
+                                    <td>
+                                        <span class="badge" style="background-color: #{{ imp.colore }};">
+                                            {{ imp.attivita_nome }}
+                                        </span>
+                                    </td>
+                                    <td>{{ imp.giorni_lavorativi }}</td>
+                                    <td>{{ imp.note or '-' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <td colspan="4"><strong>TOTALE GIORNI LAVORATIVI</strong></td>
+                                    <td><strong>{{ impegni|sum(attribute='giorni_lavorativi') }}</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dettaglio -->
+<div class="modal fade" id="modalDettaglio" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dettaglio Attività</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalDettaglioBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const impegni = {{ impegni|tojson }};
+const sostituzioni = {{ sostituzioni|tojson }};
+const giorni = {{ giorni|tojson }};
+const dataInizioCorso = '{{ data_inizio }}';
+
+$(document).ready(function() {
+    popolaCalendarioCorso();
+});
+
+function popolaCalendarioCorso() {
+    // Per ogni impegno, colora le celle corrispondenti
+    impegni.forEach(imp => {
+        const dataInizio = new Date(imp.data_inizio);
+        const dataFine = new Date(imp.data_fine);
+        const corsoInizio = new Date(dataInizioCorso);
+        
+        // Crea set dei giorni extra per questo impegno
+        const giorniExtra = new Set();
+        if (imp.giorno_extra_1) giorniExtra.add(imp.giorno_extra_1);
+        if (imp.giorno_extra_2) giorniExtra.add(imp.giorno_extra_2);
+        if (imp.giorno_extra_3) giorniExtra.add(imp.giorno_extra_3);
+        
+        // Per ogni giorno dell'impegno
+        for (let d = new Date(dataInizio); d <= dataFine; d.setDate(d.getDate() + 1)) {
+            const dataGiornoStr = d.toISOString().split('T')[0];
+            const weekday = d.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+            
+            // Colora solo se Lun-Ven OPPURE è nei giorni extra
+            const isLunVen = weekday >= 1 && weekday <= 5;
+            const isGiornoExtra = giorniExtra.has(dataGiornoStr);
+            
+            if (isLunVen || isGiornoExtra) {
+                // Calcola indice giorno nel corso (1-based)
+                const giornoIndice = Math.floor((d - corsoInizio) / (1000 * 60 * 60 * 24)) + 1;
+                
+                const cella = $(`#cella-${imp.istruttore_id}-${giornoIndice}`);
+                if (cella.length) {
+                    cella.removeClass('cella-vuota giorno-weekend');
+                    cella.addClass('cella-corso');
+                    cella.css('background-color', `#${imp.colore}`);
+                    cella.html(`
+                        <div class="istruttore-nome">${imp.istruttore_nome.split(' ')[0]}</div>
+                        <div class="attivita-nome-cella">${imp.attivita_nome.substring(0, 15)}</div>
+                    `);
+                    
+                    // Click handler
+                    cella.off('click').on('click', function() {
+                        mostraDettaglio(imp, dataGiornoStr);
+                    });
+                }
+            }
+        }
+    });
+    
+    // Applica sostituzioni
+    sostituzioni.forEach(sost => {
+        const dataSost = new Date(sost.data_sostituzione);
+        const corsoInizio = new Date(dataInizioCorso);
+        const giornoIndice = Math.floor((dataSost - corsoInizio) / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Trova impegno originale
+        const impOriginal = impegni.find(i => i.id === sost.impegno_id);
+        
+        if (impOriginal && giornoIndice >= 1 && giornoIndice <= giorni.length) {
+            // Rimuovi da originale
+            const cellaOrig = $(`#cella-${sost.istruttore_originale_id}-${giornoIndice}`);
+            if (cellaOrig.length) {
+                cellaOrig.addClass('cella-vuota');
+                cellaOrig.removeClass('cella-corso');
+                cellaOrig.css('background-color', 'white');
+                cellaOrig.html('');
+                cellaOrig.off('click');
+            }
+            
+            // Colora sostituto
+            const cellaSost = $(`#cella-${sost.istruttore_sostituto_id}-${giornoIndice}`);
+            if (cellaSost.length) {
+                cellaSost.removeClass('cella-vuota giorno-weekend');
+                cellaSost.addClass('cella-corso');
+                cellaSost.css('background-color', `#${sost.colore}`);
+                cellaSost.html(`
+                    <div class="istruttore-nome">${sost.istruttore_sostituto.split(' ')[0]}</div>
+                    <div class="attivita-nome-cella">${sost.attivita_nome.substring(0, 15)}</div>
+                    <small><i class="fas fa-exchange-alt"></i></small>
+                `);
+                
+                cellaSost.off('click').on('click', function() {
+                    mostraDettaglioSostituzione(impOriginal, sost);
+                });
+            }
+        }
+    });
+}
+
+function mostraDettaglio(impegno, data) {
+    const html = `
+        <p><strong>Data:</strong> ${formatData(data)}</p>
+        <p><strong>Istruttore:</strong> ${impegno.istruttore_nome}</p>
+        <p><strong>Attività:</strong> 
+            <span class="badge" style="background-color: #${impegno.colore};">
+                ${impegno.attivita_nome}
+            </span>
+        </p>
+        <p><strong>Periodo Impegno:</strong> ${formatData(impegno.data_inizio)} → ${formatData(impegno.data_fine)}</p>
+        <p><strong>Giorni Lavorativi:</strong> ${impegno.giorni_lavorativi}</p>
+        ${impegno.note ? `<p><strong>Note:</strong> ${impegno.note}</p>` : ''}
+    `;
+    
+    $('#modalDettaglioBody').html(html);
+    new bootstrap.Modal($('#modalDettaglio')).show();
+}
+
+function mostraDettaglioSostituzione(impegno, sost) {
+    const html = `
+        <div class="alert alert-info">
+            <i class="fas fa-exchange-alt"></i> <strong>SOSTITUZIONE</strong>
+        </div>
+        <p><strong>Data:</strong> ${formatData(sost.data_sostituzione)}</p>
+        <p><strong>Istruttore Originale:</strong> ${sost.istruttore_originale}</p>
+        <p><strong>Istruttore Sostituto:</strong> ${sost.istruttore_sostituto}</p>
+        <p><strong>Attività:</strong> 
+            <span class="badge" style="background-color: #${sost.colore};">
+                ${sost.attivita_nome}
+            </span>
+        </p>
+        ${sost.note ? `<p><strong>Motivo:</strong> ${sost.note}</p>` : ''}
+    `;
+    
+    $('#modalDettaglioBody').html(html);
+    new bootstrap.Modal($('#modalDettaglio')).show();
+}
+
+function formatData(dataStr) {
+    const data = new Date(dataStr);
+    return data.toLocaleDateString('it-IT');
+}
+</script>
+{% endblock %}
+<html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:xd_Signature msdt:dt="string"></mso:xd_Signature>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor>
+<mso:Order msdt:dt="string">192500.000000000</mso:Order>
+<mso:ComplianceAssetId msdt:dt="string"></mso:ComplianceAssetId>
+<mso:TemplateUrl msdt:dt="string"></mso:TemplateUrl>
+<mso:xd_ProgID msdt:dt="string"></mso:xd_ProgID>
+<mso:_ExtendedDescription msdt:dt="string"></mso:_ExtendedDescription>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author>
+<mso:TriggerFlowInfo msdt:dt="string"></mso:TriggerFlowInfo>
+<mso:ContentTypeId msdt:dt="string">0x0101002AC836DBC1B2D14B9CF1B153B23CAC72</mso:ContentTypeId>
+<mso:_SourceUrl msdt:dt="string"></mso:_SourceUrl>
+<mso:_SharedFileIndex msdt:dt="string"></mso:_SharedFileIndex>
+<mso:TaxCatchAll msdt:dt="string"></mso:TaxCatchAll>
+<mso:MediaServiceImageTags msdt:dt="string"></mso:MediaServiceImageTags>
+<mso:lcf76f155ced4ddcb4097134ff3c332f msdt:dt="string"></mso:lcf76f155ced4ddcb4097134ff3c332f>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+<title></title></head>

@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Istruttori - Calendario Istruttori{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-users"></i> Gestione Istruttori</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#modalIstruttore" onclick="nuovoIstruttore()">
+            <i class="fas fa-user-plus"></i> Aggiungi Nuovo Istruttore
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5><i class="fas fa-user-check"></i> Istruttori Attivi</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for istr in istruttori %}
+                            {% if istr.attivo %}
+                            <tr>
+                                <td><strong>{{ istr.nome }}</strong></td>
+                                <td>{{ istr.email or '-' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning" onclick="modificaIstruttore({{ istr.id }})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="disattivaIstruttore({{ istr.id }}, '{{ istr.nome }}')">
+                                        <i class="fas fa-user-slash"></i> Pensione
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5><i class="fas fa-user-times"></i> Istruttori Non Attivi (Pensione)</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for istr in istruttori %}
+                            {% if not istr.attivo %}
+                            <tr class="table-secondary">
+                                <td>{{ istr.nome }}</td>
+                                <td>{{ istr.email or '-' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" onclick="attivaIstruttore({{ istr.id }}, '{{ istr.nome }}')">
+                                        <i class="fas fa-user-check"></i> Riattiva
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <!-- Nessun istruttore disattivato -->
+                            {% endif %}
+                            {% endfor %}
+                            {% if istruttori|selectattr('attivo', 'equalto', 0)|list|length == 0 %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">
+                                    <em>Nessun istruttore in pensione</em>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-info-circle"></i> Come Funziona</h5>
+            <ul>
+                <li><strong>Aggiungi:</strong> Click "Aggiungi Nuovo Istruttore" per inserire un nuovo istruttore</li>
+                <li><strong>Modifica:</strong> Click su icona matita per modificare nome o email</li>
+                <li><strong>Pensione:</strong> Click "Pensione" per disattivare un istruttore (rimane nel database ma non appare nei menu)</li>
+                <li><strong>Riattiva:</strong> Se serve riattivare un istruttore in pensione, click "Riattiva"</li>
+            </ul>
+            <p class="mb-0"><strong>Nota:</strong> Gli istruttori disattivati NON appaiono nei menu a tendina quando aggiungi impegni, ma i loro impegni passati rimangono visibili nei calendari.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Istruttore -->
+<div class="modal fade" id="modalIstruttore" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalTitle">Nuovo Istruttore</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formIstruttore">
+                    <input type="hidden" id="istruttore_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Nome Completo *</label>
+                        <input type="text" class="form-control" id="nome" required 
+                               placeholder="es. ROSSI MARIO">
+                        <small class="text-muted">Formato consigliato: COGNOME NOME</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email (opzionale)</label>
+                        <input type="email" class="form-control" id="email" 
+                               placeholder="es. rossi.mario@azienda.it">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Annulla
+                </button>
+                <button type="button" class="btn btn-primary" onclick="salvaIstruttore()">
+                    <i class="fas fa-save"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let modalIstruttore = null;
+let modalInstance = null;
+
+$(document).ready(function() {
+    modalIstruttore = $('#modalIstruttore');
+    modalInstance = new bootstrap.Modal(modalIstruttore[0]);
+});
+
+function nuovoIstruttore() {
+    $('#modalTitle').text('Nuovo Istruttore');
+    $('#formIstruttore')[0].reset();
+    $('#istruttore_id').val('');
+}
+
+function modificaIstruttore(id) {
+    $.getJSON('/api/istruttori', function(data) {
+        const istruttore = data.find(i => i.id === id);
+        if (istruttore) {
+            $('#modalTitle').text('Modifica Istruttore');
+            $('#istruttore_id').val(istruttore.id);
+            $('#nome').val(istruttore.nome);
+            $('#email').val(istruttore.email || '');
+            
+            modalInstance.show();
+        }
+    });
+}
+
+function salvaIstruttore() {
+    const id = $('#istruttore_id').val();
+    const nome = $('#nome').val().trim();
+    
+    if (!nome) {
+        alert('Inserire il nome!');
+        return;
+    }
+    
+    const data = {
+        nome: nome,
+        email: $('#email').val().trim(),
+        attivo: 1
+    };
+    
+    const url = id ? `/api/istruttori/${id}` : '/api/istruttori';
+    const method = id ? 'PUT' : 'POST';
+    
+    $.ajax({
+        url: url,
+        method: method,
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function() {
+            alert('Istruttore salvato con successo!');
+            location.reload();
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON?.error || 'Errore sconosciuto';
+            alert('Errore: ' + error);
+        }
+    });
+}
+
+function disattivaIstruttore(id, nome) {
+    if (confirm(`Confermi di mandare in PENSIONE l'istruttore "${nome}"?\n\nNon apparirà più nei menu ma i suoi impegni passati rimangono visibili.`)) {
+        $.ajax({
+            url: `/api/istruttori/${id}/disattiva`,
+            method: 'POST',
+            success: function() {
+                alert('Istruttore mandato in pensione!');
+                location.reload();
+            },
+            error: function() {
+                alert('Errore nel disattivare l\'istruttore!');
+            }
+        });
+    }
+}
+
+function attivaIstruttore(id, nome) {
+    if (confirm(`Riattivare l'istruttore "${nome}"?`)) {
+        $.ajax({
+            url: `/api/istruttori/${id}/attiva`,
+            method: 'POST',
+            success: function() {
+                alert('Istruttore riattivato!');
+                location.reload();
+            },
+            error: function() {
+                alert('Errore nel riattivare l\'istruttore!');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
+<html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:xd_Signature msdt:dt="string"></mso:xd_Signature>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor>
+<mso:Order msdt:dt="string">192900.000000000</mso:Order>
+<mso:ComplianceAssetId msdt:dt="string"></mso:ComplianceAssetId>
+<mso:TemplateUrl msdt:dt="string"></mso:TemplateUrl>
+<mso:xd_ProgID msdt:dt="string"></mso:xd_ProgID>
+<mso:_ExtendedDescription msdt:dt="string"></mso:_ExtendedDescription>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author>
+<mso:TriggerFlowInfo msdt:dt="string"></mso:TriggerFlowInfo>
+<mso:ContentTypeId msdt:dt="string">0x0101002AC836DBC1B2D14B9CF1B153B23CAC72</mso:ContentTypeId>
+<mso:_SourceUrl msdt:dt="string"></mso:_SourceUrl>
+<mso:_SharedFileIndex msdt:dt="string"></mso:_SharedFileIndex>
+<mso:TaxCatchAll msdt:dt="string"></mso:TaxCatchAll>
+<mso:MediaServiceImageTags msdt:dt="string"></mso:MediaServiceImageTags>
+<mso:lcf76f155ced4ddcb4097134ff3c332f msdt:dt="string"></mso:lcf76f155ced4ddcb4097134ff3c332f>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+<title></title></head>

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Vista Corsi - Calendario Istruttori{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-book"></i> Vista Corsi</h2>
+        <p class="text-muted">Seleziona un corso per vedere il calendario dettagliato con tutti gli istruttori coinvolti</p>
+        <hr>
+    </div>
+</div>
+
+{% if corsi %}
+<div class="row">
+    <div class="col-12">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID Corso</th>
+                        <th>Periodo</th>
+                        <th>Durata</th>
+                        <th>N° Istruttori</th>
+                        <th>N° Impegni</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for corso in corsi %}
+                    <tr>
+                        <td><strong>{{ corso.id_corso }}</strong></td>
+                        <td>
+                            <i class="fas fa-calendar-day"></i> 
+                            {{ corso.data_inizio | replace('-', '/') | reverse | replace('/', '.') | reverse }}
+                            →
+                            {{ corso.data_fine | replace('-', '/') | reverse | replace('/', '.') | reverse }}
+                        </td>
+                        <td>
+                            {% set inizio = corso.data_inizio %}
+                            {% set fine = corso.data_fine %}
+                            {% set giorni = ((fine | string | replace('-', '') | int) - (inizio | string | replace('-', '') | int)) %}
+                            {{ ((fine.split('-')[0] | int - inizio.split('-')[0] | int) * 365 + 
+                                (fine.split('-')[1] | int - inizio.split('-')[1] | int) * 30 + 
+                                (fine.split('-')[2] | int - inizio.split('-')[2] | int) + 1) }} giorni
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ corso.num_istruttori }} istruttori</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ corso.num_impegni }} impegni</span>
+                        </td>
+                        <td>
+                            <a href="/corso/{{ corso.id_corso }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-calendar-alt"></i> Vedi Calendario
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> 
+            <strong>Nessun corso trovato</strong><br>
+            Non ci sono corsi registrati con un ID Corso. Aggiungi impegni con un ID Corso per vederli qui.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-question-circle"></i> Come funziona?
+            </div>
+            <div class="card-body">
+                <ol>
+                    <li>Ogni corso è identificato da un <strong>ID Corso</strong> univoco (es. 01_25, CORSO_A, etc.)</li>
+                    <li>Un corso può avere <strong>più impegni</strong> con diversi istruttori e attività</li>
+                    <li>Clicca su <strong>"Vedi Calendario"</strong> per vedere il calendario del corso</li>
+                    <li>Nel calendario vedrai:
+                        <ul>
+                            <li>Tutte le attività del corso giorno per giorno</li>
+                            <li>Chi sta facendo cosa in ogni giorno</li>
+                            <li>Le sostituzioni eventualmente presenti</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+<html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:xd_Signature msdt:dt="string"></mso:xd_Signature>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor>
+<mso:Order msdt:dt="string">193100.000000000</mso:Order>
+<mso:ComplianceAssetId msdt:dt="string"></mso:ComplianceAssetId>
+<mso:TemplateUrl msdt:dt="string"></mso:TemplateUrl>
+<mso:xd_ProgID msdt:dt="string"></mso:xd_ProgID>
+<mso:_ExtendedDescription msdt:dt="string"></mso:_ExtendedDescription>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author>
+<mso:TriggerFlowInfo msdt:dt="string"></mso:TriggerFlowInfo>
+<mso:ContentTypeId msdt:dt="string">0x0101002AC836DBC1B2D14B9CF1B153B23CAC72</mso:ContentTypeId>
+<mso:_SourceUrl msdt:dt="string"></mso:_SourceUrl>
+<mso:_SharedFileIndex msdt:dt="string"></mso:_SharedFileIndex>
+<mso:TaxCatchAll msdt:dt="string"></mso:TaxCatchAll>
+<mso:MediaServiceImageTags msdt:dt="string"></mso:MediaServiceImageTags>
+<mso:lcf76f155ced4ddcb4097134ff3c332f msdt:dt="string"></mso:lcf76f155ced4ddcb4097134ff3c332f>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+<title></title></head>

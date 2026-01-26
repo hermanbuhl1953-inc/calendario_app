@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block title %}Calendario {{ anno }} - Calendario Istruttori{% endblock %}
+
+{% block extra_head %}
+<style>
+.calendario-container {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.calendario-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.7rem;
+}
+
+.calendario-table th,
+.calendario-table td {
+    border: 1px solid #ddd;
+    padding: 2px;
+    text-align: center;
+    min-width: 15px;
+    height: 25px;
+}
+
+.calendario-table thead th {
+    background-color: #34495E;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 0.65rem;
+}
+
+.weekend-header {
+    background-color: #95a5a6 !important;
+    color: white !important;
+}
+
+.cella-weekend {
+    background-color: #f8f9fa !important;
+}
+
+.calendario-table tbody th {
+    background-color: #ECF0F1;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    font-weight: bold;
+    min-width: 150px;
+    text-align: left;
+    padding-left: 8px;
+}
+
+.mese-header {
+    background-color: #2C3E50 !important;
+    color: white !important;
+    font-weight: bold;
+}
+
+.cella-giorno {
+    cursor: pointer;
+    transition: opacity 0.2s;
+    color: white;
+    font-weight: bold;
+    font-size: 0.6rem;
+}
+
+.cella-giorno:hover {
+    opacity: 0.8;
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+}
+
+.cella-vuota {
+    background-color: white;
+}
+
+.anno-selector {
+    margin-bottom: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-calendar"></i> Calendario {{ anno }}</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row anno-selector">
+    <div class="col-md-6">
+        <div class="btn-group" role="group">
+            {% for y in [2025, 2026, 2027, 2028, 2029, 2030] %}
+            <a href="/calendario/{{ y }}" class="btn btn-{% if y == anno %}primary{% else %}outline-primary{% endif %}">
+                {{ y }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-md-6 text-end">
+        <button class="btn btn-info" onclick="mostraLegenda()">
+            <i class="fas fa-info-circle"></i> Legenda Colori
+        </button>
+        <a href="/export/excel" class="btn btn-success">
+            <i class="fas fa-download"></i> Export Excel
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Suggerimento:</strong> Scorri orizzontalmente per vedere tutti i giorni dell'anno. 
+            Click su una cella colorata per vedere i dettagli dell'impegno.
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="calendario-container">
+            <table class="calendario-table table table-bordered">
+                <thead>
+                    <!-- Riga mesi -->
+                    <tr>
+                        <th rowspan="2">ISTRUTTORE</th>
+                        {% for mese in mesi %}
+                        <th colspan="{{ mese.giorni }}" class="mese-header">{{ mese.nome|upper }}</th>
+                        {% endfor %}
+                    </tr>
+                    <!-- Riga giorni -->
+                    <tr>
+                        {% for giorno in range(1, num_giorni + 1) %}
+                        <th>{{ (giorno % 31) if (giorno % 31) != 0 else 31 }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for istruttore in istruttori %}
+                    <tr>
+                        <th>{{ istruttore.nome }}</th>
+                        {% for giorno in range(1, num_giorni + 1) %}
+                        <td class="cella-giorno cella-vuota" 
+                            data-istruttore="{{ istruttore.nome }}"
+                            data-giorno="{{ giorno }}"
+                            id="cella-{{ istruttore.id }}-{{ giorno }}">
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dettaglio Impegno -->
+<div class="modal fade" id="modalDettaglio" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Dettaglio Impegno</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalDettaglioBody">
+                <!-- Contenuto dinamico -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-primary" id="btnVaiCorso" style="display: none;">
+                    Vai al Corso
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Legenda -->
+<div class="modal fade" id="modalLegenda" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Legenda Colori</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Corsi</h6>
+                        <p><span class="badge" style="background-color: #52BE80;">CORSO PDT-CT</span></p>
+                        <p><span class="badge" style="background-color: #5DADE2;">CORSO ADT</span></p>
+                        <p><span class="badge" style="background-color: #BB8FCE;">CORSO AMC</span></p>
+                        <p><span class="badge" style="background-color: #F39C12;">CORSO COMM.LE</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Esami</h6>
+                        <p><span class="badge" style="background-color: #3498DB;">ESAME PDT-CT</span></p>
+                        <p><span class="badge" style="background-color: #2874A6;">ESAME ADT</span></p>
+                        <p><span class="badge" style="background-color: #5499C7;">ESAME AMC</span></p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Assenze</h6>
+                        <p><span class="badge" style="background-color: #F1C40F; color: #000;">FERIE</span></p>
+                        <p><span class="badge" style="background-color: #E74C3C;">MALATTIA</span></p>
+                        <p><span class="badge" style="background-color: #F4D03F; color: #000;">PERMESSO</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Altro</h6>
+                        <p><span class="badge" style="background-color: #229954;">ADDESTRAMENTO</span></p>
+                        <p><span class="badge" style="background-color: #BB8FCE;">TIROCINIO</span></p>
+                        <p><span class="badge" style="background-color: #7F8C8D;">RIUNIONE</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const anno = {{ anno }};
+const impegni = {{ impegni|tojson }};
+const sostituzioni = {{ sostituzioni|tojson }};
+const festivi = {{ festivi|tojson }};
+
+$(document).ready(function() {
+    coloraWeekend();
+    popolaCalendario();
+});
+
+function coloraWeekend() {
+    // Colora intestazioni e celle weekend
+    for (let giorno = 1; giorno <= {{ num_giorni }}; giorno++) {
+        const data = new Date(anno, 0, giorno);
+        const weekday = data.getDay(); // 0=Dom, 6=Sab
+        
+        if (weekday === 0 || weekday === 6) {
+            // Trova header corrispondente (riga 2 del thead)
+            const headerCells = $('.calendario-table thead tr:eq(1) th');
+            if (headerCells[giorno]) {
+                $(headerCells[giorno]).addClass('weekend-header');
+            }
+            
+            // Colora tutte le celle di questo giorno
+            $(`.cella-giorno[id$="-${giorno}"]`).addClass('cella-weekend');
+        }
+    }
+}
+
+function popolaCalendario() {
+    // Per ogni impegno, colora le celle corrispondenti
+    impegni.forEach(impegno => {
+        const dataInizio = new Date(impegno.data_inizio);
+        const dataFine = new Date(impegno.data_fine);
+        
+        // Calcola giorno inizio e fine nell'anno
+        const inizioAnno = new Date(anno, 0, 1);
+        const giornoInizio = Math.floor((dataInizio - inizioAnno) / (1000 * 60 * 60 * 24)) + 1;
+        const giornoFine = Math.floor((dataFine - inizioAnno) / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Crea set dei giorni extra per questo impegno
+        const giorniExtra = new Set();
+        if (impegno.giorno_extra_1) giorniExtra.add(impegno.giorno_extra_1);
+        if (impegno.giorno_extra_2) giorniExtra.add(impegno.giorno_extra_2);
+        if (impegno.giorno_extra_3) giorniExtra.add(impegno.giorno_extra_3);
+        
+        // Colora solo giorni lavorativi (Lun-Ven) + giorni extra
+        for (let g = Math.max(1, giornoInizio); g <= Math.min(giornoFine, {{ num_giorni }}); g++) {
+            // Calcola data del giorno
+            const dataGiorno = new Date(anno, 0, g);
+            const dataGiornoStr = dataGiorno.toISOString().split('T')[0];
+            const weekday = dataGiorno.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+            
+            // Colora solo se:
+            // - È Lun-Ven (weekday 1-5) OPPURE
+            // - È nei giorni extra
+            const isLunVen = weekday >= 1 && weekday <= 5;
+            const isGiornoExtra = giorniExtra.has(dataGiornoStr);
+            
+            if (isLunVen || isGiornoExtra) {
+                const cella = $(`#cella-${impegno.istruttore_id}-${g}`);
+                if (cella.length) {
+                    cella.removeClass('cella-vuota');
+                    cella.css('background-color', `#${impegno.colore}`);
+                    cella.text(impegno.attivita_nome.substring(0, 3));
+                    cella.attr('data-impegno-id', impegno.id);
+                    cella.attr('data-id-corso', impegno.id_corso || '');
+                    
+                    // Aggiungi click handler
+                    cella.off('click').on('click', function() {
+                        mostraDettaglioImpegno(impegno);
+                    });
+                }
+            }
+        }
+    });
+    
+    // Applica sostituzioni
+    sostituzioni.forEach(sost => {
+        const dataSost = new Date(sost.data_sostituzione);
+        const inizioAnno = new Date(anno, 0, 1);
+        const giornoSost = Math.floor((dataSost - inizioAnno) / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Trova l'impegno originale per ottenere il colore
+        const impegnoOriginale = impegni.find(i => i.id === sost.impegno_id);
+        
+        if (impegnoOriginale && giornoSost >= 1 && giornoSost <= {{ num_giorni }}) {
+            // Rimuovi colore dalla cella dell'istruttore ORIGINALE
+            const cellaOriginale = $(`#cella-${sost.istruttore_originale_id}-${giornoSost}`);
+            if (cellaOriginale.length) {
+                cellaOriginale.addClass('cella-vuota');
+                cellaOriginale.css('background-color', 'white');
+                cellaOriginale.text('');
+                cellaOriginale.off('click');
+            }
+            
+            // Colora la cella dell'istruttore SOSTITUTO
+            const cellaSostituto = $(`#cella-${sost.istruttore_sostituto_id}-${giornoSost}`);
+            if (cellaSostituto.length) {
+                cellaSostituto.removeClass('cella-vuota');
+                cellaSostituto.css('background-color', `#${sost.colore}`);
+                cellaSostituto.text(impegnoOriginale.attivita_nome.substring(0, 3));
+                cellaSostituto.attr('data-sostituzione-id', sost.id);
+                cellaSostituto.attr('data-impegno-id', impegnoOriginale.id);
+                
+                // Click handler con info sostituzione
+                cellaSostituto.off('click').on('click', function() {
+                    mostraDettaglioSostituzione(impegnoOriginale, sost);
+                });
+            }
+        }
+    });
+}
+
+function mostraDettaglioImpegno(impegno) {
+    const html = `
+        <p><strong>Istruttore:</strong> ${impegno.istruttore_nome}</p>
+        <p><strong>Attività:</strong> 
+            <span class="badge" style="background-color: #${impegno.colore};">
+                ${impegno.attivita_nome}
+            </span>
+        </p>
+        ${impegno.id_corso ? `<p><strong>ID Corso:</strong> ${impegno.id_corso}</p>` : ''}
+        <p><strong>Data Inizio:</strong> ${formatData(impegno.data_inizio)}</p>
+        <p><strong>Data Fine:</strong> ${formatData(impegno.data_fine)}</p>
+        <p><strong>Giorni Lavorativi:</strong> ${impegno.giorni_lavorativi}</p>
+        ${impegno.note ? `<p><strong>Note:</strong> ${impegno.note}</p>` : ''}
+    `;
+    
+    $('#modalDettaglioBody').html(html);
+    
+    if (impegno.id_corso) {
+        $('#btnVaiCorso').show().off('click').on('click', function() {
+            window.location.href = `/corso/${impegno.id_corso}`;
+        });
+    } else {
+        $('#btnVaiCorso').hide();
+    }
+    
+    new bootstrap.Modal($('#modalDettaglio')).show();
+}
+
+function mostraDettaglioSostituzione(impegno, sost) {
+    const html = `
+        <div class="alert alert-info">
+            <i class="fas fa-exchange-alt"></i> <strong>SOSTITUZIONE</strong>
+        </div>
+        <p><strong>Istruttore Originale:</strong> ${sost.istruttore_originale}</p>
+        <p><strong>Istruttore Sostituto:</strong> ${sost.istruttore_sostituto}</p>
+        <p><strong>Data Sostituzione:</strong> ${formatData(sost.data_sostituzione)}</p>
+        <p><strong>Attività:</strong> 
+            <span class="badge" style="background-color: #${sost.colore};">
+                ${impegno.attivita_nome}
+            </span>
+        </p>
+        ${impegno.id_corso ? `<p><strong>ID Corso:</strong> ${impegno.id_corso}</p>` : ''}
+        ${sost.note ? `<p><strong>Motivo:</strong> ${sost.note}</p>` : ''}
+    `;
+    
+    $('#modalDettaglioBody').html(html);
+    
+    if (impegno.id_corso) {
+        $('#btnVaiCorso').show().off('click').on('click', function() {
+            window.location.href = `/corso/${impegno.id_corso}`;
+        });
+    } else {
+        $('#btnVaiCorso').hide();
+    }
+    
+    new bootstrap.Modal($('#modalDettaglio')).show();
+}
+
+function formatData(dataStr) {
+    const data = new Date(dataStr);
+    return data.toLocaleDateString('it-IT');
+}
+
+function mostraLegenda() {
+    new bootstrap.Modal($('#modalLegenda')).show();
+}
+</script>
+{% endblock %}
+<html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:xd_Signature msdt:dt="string"></mso:xd_Signature>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor>
+<mso:Order msdt:dt="string">192400.000000000</mso:Order>
+<mso:ComplianceAssetId msdt:dt="string"></mso:ComplianceAssetId>
+<mso:TemplateUrl msdt:dt="string"></mso:TemplateUrl>
+<mso:xd_ProgID msdt:dt="string"></mso:xd_ProgID>
+<mso:_ExtendedDescription msdt:dt="string"></mso:_ExtendedDescription>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author>
+<mso:TriggerFlowInfo msdt:dt="string"></mso:TriggerFlowInfo>
+<mso:ContentTypeId msdt:dt="string">0x0101002AC836DBC1B2D14B9CF1B153B23CAC72</mso:ContentTypeId>
+<mso:_SourceUrl msdt:dt="string"></mso:_SourceUrl>
+<mso:_SharedFileIndex msdt:dt="string"></mso:_SharedFileIndex>
+<mso:TaxCatchAll msdt:dt="string"></mso:TaxCatchAll>
+<mso:MediaServiceImageTags msdt:dt="string"></mso:MediaServiceImageTags>
+<mso:lcf76f155ced4ddcb4097134ff3c332f msdt:dt="string"></mso:lcf76f155ced4ddcb4097134ff3c332f>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+<title></title></head>

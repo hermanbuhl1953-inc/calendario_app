@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Calendario Istruttori{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white p-5 rounded">
+            <h1 class="display-4"><i class="fas fa-calendar-alt"></i> Calendario Istruttori</h1>
+            <p class="lead">Sistema di gestione impegni per istruttori ferroviari</p>
+            <hr class="my-4 bg-white">
+            <p>Gestisci facilmente corsi, esami, ferie e altri impegni. Visualizza i calendari e esporta in Excel.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Card Statistiche -->
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-list-check"></i> Impegni</h5>
+                <p class="card-text display-4" id="stat-impegni">-</p>
+                <small>Totale impegni registrati</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-graduation-cap"></i> Corsi</h5>
+                <p class="card-text display-4" id="stat-corsi">-</p>
+                <small>Corsi attivi</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-users"></i> Istruttori</h5>
+                <p class="card-text display-4" id="stat-istruttori">-</p>
+                <small>Istruttori attivi</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> Sovrapposizioni</h5>
+                <p class="card-text display-4" id="stat-sovrapposizioni">-</p>
+                <small>Conflitti da risolvere</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-rocket"></i> Azioni Rapide</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="/impegni" class="btn btn-outline-primary btn-lg">
+                        <i class="fas fa-plus"></i> Aggiungi Nuovo Impegno
+                    </a>
+                    <a href="/calendario/2025" class="btn btn-outline-success btn-lg">
+                        <i class="fas fa-calendar"></i> Visualizza Calendario 2025
+                    </a>
+                    <a href="/export/excel" class="btn btn-outline-info btn-lg">
+                        <i class="fas fa-download"></i> Esporta Excel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-chart-bar"></i> Attività per Tipo</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartTipi" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5><i class="fas fa-info-circle"></i> Guida Rapida</h5>
+            </div>
+            <div class="card-body">
+                <h6><strong>Come Usare il Sistema:</strong></h6>
+                <ol>
+                    <li><strong>Gestisci Impegni:</strong> Vai su "Impegni" per aggiungere, modificare o eliminare impegni</li>
+                    <li><strong>Visualizza Calendario:</strong> Seleziona l'anno dal menu "Calendari" per vedere la vista annuale</li>
+                    <li><strong>Dettagli Corso:</strong> Click su una cella colorata nel calendario per vedere i dettagli del corso</li>
+                    <li><strong>Export Excel:</strong> Genera un file Excel completo con tutti i dati e i calendari</li>
+                </ol>
+                
+                <h6 class="mt-3"><strong>Legenda Colori:</strong></h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <span class="badge" style="background-color: #52BE80;">CORSO PDT-CT</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge" style="background-color: #5DADE2;">CORSO ADT</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge" style="background-color: #3498DB;">ESAME</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="badge" style="background-color: #F1C40F; color: #000;">FERIE</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Carica statistiche
+    $.getJSON('/api/statistiche', function(data) {
+        $('#stat-impegni').text(data.totale_impegni);
+        $('#stat-corsi').text(data.totale_corsi);
+        $('#stat-istruttori').text(data.totale_istruttori);
+        
+        // Grafico tipi attività
+        const labels = data.per_tipo.slice(0, 6).map(t => t.nome);
+        const values = data.per_tipo.slice(0, 6).map(t => t.totale);
+        
+        new Chart($('#chartTipi'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Numero Attività',
+                    data: values,
+                    backgroundColor: [
+                        'rgba(82, 190, 128, 0.7)',
+                        'rgba(93, 173, 226, 0.7)',
+                        'rgba(52, 152, 219, 0.7)',
+                        'rgba(243, 156, 18, 0.7)',
+                        'rgba(241, 196, 15, 0.7)',
+                        'rgba(231, 76, 60, 0.7)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    });
+    
+    // Carica sovrapposizioni
+    $.getJSON('/api/sovrapposizioni', function(data) {
+        $('#stat-sovrapposizioni').text(data.length);
+    });
+});
+</script>
+{% endblock %}
+<html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:xd_Signature msdt:dt="string"></mso:xd_Signature>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Editor>
+<mso:Order msdt:dt="string">192800.000000000</mso:Order>
+<mso:ComplianceAssetId msdt:dt="string"></mso:ComplianceAssetId>
+<mso:TemplateUrl msdt:dt="string"></mso:TemplateUrl>
+<mso:xd_ProgID msdt:dt="string"></mso:xd_ProgID>
+<mso:_ExtendedDescription msdt:dt="string"></mso:_ExtendedDescription>
+<mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author msdt:dt="string">Grifasi Angelo Giuseppe</mso:display_urn_x003a_schemas-microsoft-com_x003a_office_x003a_office_x0023_Author>
+<mso:TriggerFlowInfo msdt:dt="string"></mso:TriggerFlowInfo>
+<mso:ContentTypeId msdt:dt="string">0x0101002AC836DBC1B2D14B9CF1B153B23CAC72</mso:ContentTypeId>
+<mso:_SourceUrl msdt:dt="string"></mso:_SourceUrl>
+<mso:_SharedFileIndex msdt:dt="string"></mso:_SharedFileIndex>
+<mso:TaxCatchAll msdt:dt="string"></mso:TaxCatchAll>
+<mso:MediaServiceImageTags msdt:dt="string"></mso:MediaServiceImageTags>
+<mso:lcf76f155ced4ddcb4097134ff3c332f msdt:dt="string"></mso:lcf76f155ced4ddcb4097134ff3c332f>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+<title></title></head>
