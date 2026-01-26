@@ -151,6 +151,14 @@ def corso(id_corso):
         conn.close()
         return "Corso non trovato", 404
     
+    # Lista istruttori UNICI per il calendario (senza duplicati)
+    istruttori_unici = []
+    istruttori_visti = set()
+    for imp in impegni_corso:
+        if imp['istruttore_id'] not in istruttori_visti:
+            istruttori_unici.append({'id': imp['istruttore_id'], 'nome': imp['istruttore_nome']})
+            istruttori_visti.add(imp['istruttore_id'])
+    
     # Trova periodo totale del corso (min data_inizio, max data_fine)
     data_inizio_corso = min(imp['data_inizio'] for imp in impegni_corso)
     data_fine_corso = max(imp['data_fine'] for imp in impegni_corso)
@@ -191,9 +199,10 @@ def corso(id_corso):
     
     conn.close()
     
-    return render_template('corso.html', 
+    return render_template('corso.html',
                          id_corso=id_corso,
                          impegni=impegni_corso,
+                         istruttori_unici=istruttori_unici,
                          giorni=giorni,
                          num_giorni=num_giorni,
                          data_inizio=data_inizio_corso,
