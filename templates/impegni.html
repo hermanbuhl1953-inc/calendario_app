@@ -295,10 +295,10 @@ function salvaImpegno() {
     const id = #impegno_id.val();
     
     // Validazione
-    const istruttoreId = #istruttore_id.val();
-    const attivitaId = #attivita_id.val();
-    const dataInizio = #data_inizio.val();
-    const giorniLavorativi = #giorni_lavorativi.val();
+    const istruttoreId = $("#istruttore_id").val();
+    const attivitaId = $("#attivita_id").val();
+    const dataInizio = $("#data_inizio").val();
+    const giorniLavorativi = $("#giorni_lavorativi").val();
     const dataFine = $("#data_fine").val();
     
     if (!istruttoreId || !attivitaId || !dataInizio) {
@@ -493,4 +493,5 @@ function eliminaSostituzione(sostId) {
 </mso:CustomDocumentProperties>
 </xml><![endif]-->
 <title></title></head>
+
 
