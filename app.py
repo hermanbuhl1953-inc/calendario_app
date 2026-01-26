@@ -7,7 +7,7 @@ Calendario Istruttori - Flask App
 from flask import Flask, render_template, request, jsonify, send_file
 from datetime import datetime, timedelta
 import calendar as cal_module
-from database import get_db, calcola_data_fine, get_festivi_italiani, log_action
+from database import get_db, calcola_data_fine, get_festivi_italiani, log_action, init_db
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -15,6 +15,12 @@ import io
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+
+# Initialize DB on startup (ensures tables exist on Render)
+try:
+    init_db()
+except Exception as e:
+    print(f"⚠️ init_db() error: {e}")
 
 # Nomi mesi in italiano
 MESI_ITALIANI = [
@@ -1080,18 +1086,24 @@ def export_excel():
 @app.route('/audit-log')
 def audit_log():
     """Visualizza il log di audit di tutte le azioni"""
-    conn = get_db()
-
-    # Prendi gli ultimi 500 log
-    logs = conn.execute('''
-        SELECT * FROM audit_log
-        ORDER BY timestamp DESC
-        LIMIT 500
-    ''').fetchall()
-
-    conn.close()
-
-    return render_template('audit_log.html', logs=logs)
+    try:
+        conn = get_db()
+        logs = conn.execute('''
+            SELECT * FROM audit_log
+            ORDER BY timestamp DESC
+            LIMIT 500
+        ''').fetchall()
+        conn.close()
+        return render_template('audit_log.html', logs=logs)
+    except Exception as e:
+        # Mostra errore utile in pagina per debug
+        try:
+            return render_template('audit_log.html', logs=[], error=str(e))
+        except Exception:
+            return jsonify({
+                'error': 'Errore caricamento audit log',
+                'detail': str(e)
+            }), 500
 
 # ============================================================================
 # MAIN
