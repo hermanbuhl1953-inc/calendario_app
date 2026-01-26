@@ -455,8 +455,12 @@ def api_create_impegno():
             return jsonify({'error': 'Manca attivita_id'}), 400
         if not data.get('data_inizio'):
             return jsonify({'error': 'Manca data_inizio'}), 400
-        if not data.get('giorni_lavorativi'):
-            return jsonify({'error': 'Manca giorni_lavorativi'}), 400
+        
+        data_fine_input = data.get('data_fine') or None
+        giorni_input = data.get('giorni_lavorativi')
+
+        if (giorni_input is None or giorni_input == '') and not data_fine_input:
+            return jsonify({'error': 'Inserire giorni_lavorativi oppure data_fine'}), 400
         
         # Prepara giorni extra (solo se non vuoti)
         giorni_extra = []
@@ -465,12 +469,17 @@ def api_create_impegno():
             if extra and extra.strip():  # Controlla che non sia stringa vuota
                 giorni_extra.append(extra)
         
-        # Calcola data fine
-        data_fine = calcola_data_fine(
-            data['data_inizio'], 
-            int(data['giorni_lavorativi']),
-            giorni_extra if giorni_extra else None
-        )
+        # Determina giorni_lavorativi e data_fine
+        if data_fine_input:
+            giorni_lavorativi = giorni_lavorativi_tra(data['data_inizio'], data_fine_input)
+            data_fine = data_fine_input
+        else:
+            giorni_lavorativi = int(giorni_input)
+            data_fine = calcola_data_fine(
+                data['data_inizio'], 
+                giorni_lavorativi,
+                giorni_extra if giorni_extra else None
+            )
         
         conn = get_db()
         c = conn.cursor()
@@ -484,7 +493,7 @@ def api_create_impegno():
             data['istruttore_id'],
             data['attivita_id'],
             data['data_inizio'],
-            data['giorni_lavorativi'],
+            giorni_lavorativi,
             giorni_extra[0] if len(giorni_extra) > 0 else None,
             giorni_extra[1] if len(giorni_extra) > 1 else None,
             giorni_extra[2] if len(giorni_extra) > 2 else None,
@@ -499,7 +508,7 @@ def api_create_impegno():
         # Traccia creazione impegno
         log_action(
             "CREATE",
-            f"Impegno {impegno_id} creato per istruttore {data['istruttore_id']} (attivita {data['attivita_id']}) dal {data['data_inizio']} per {data['giorni_lavorativi']} giorni",
+            f"Impegno {impegno_id} creato per istruttore {data['istruttore_id']} (attivita {data['attivita_id']}) dal {data['data_inizio']} per {giorni_lavorativi} giorni",
             request.headers.get('User-Agent', ''),
         )
         
@@ -522,8 +531,12 @@ def api_update_impegno(impegno_id):
             return jsonify({'error': 'Manca attivita_id'}), 400
         if not data.get('data_inizio'):
             return jsonify({'error': 'Manca data_inizio'}), 400
-        if not data.get('giorni_lavorativi'):
-            return jsonify({'error': 'Manca giorni_lavorativi'}), 400
+        
+        data_fine_input = data.get('data_fine') or None
+        giorni_input = data.get('giorni_lavorativi')
+
+        if (giorni_input is None or giorni_input == '') and not data_fine_input:
+            return jsonify({'error': 'Inserire giorni_lavorativi oppure data_fine'}), 400
         
         # Prepara giorni extra (solo se non vuoti)
         giorni_extra = []
@@ -532,12 +545,17 @@ def api_update_impegno(impegno_id):
             if extra and extra.strip():  # Controlla che non sia stringa vuota
                 giorni_extra.append(extra)
         
-        # Calcola data fine
-        data_fine = calcola_data_fine(
-            data['data_inizio'], 
-            int(data['giorni_lavorativi']),
-            giorni_extra if giorni_extra else None
-        )
+        # Determina giorni_lavorativi e data_fine
+        if data_fine_input:
+            giorni_lavorativi = giorni_lavorativi_tra(data['data_inizio'], data_fine_input)
+            data_fine = data_fine_input
+        else:
+            giorni_lavorativi = int(giorni_input)
+            data_fine = calcola_data_fine(
+                data['data_inizio'], 
+                giorni_lavorativi,
+                giorni_extra if giorni_extra else None
+            )
         
         conn = get_db()
         conn.execute('''
@@ -553,7 +571,7 @@ def api_update_impegno(impegno_id):
             data['istruttore_id'],
             data['attivita_id'],
             data['data_inizio'],
-            data['giorni_lavorativi'],
+            giorni_lavorativi,
             giorni_extra[0] if len(giorni_extra) > 0 else None,
             giorni_extra[1] if len(giorni_extra) > 1 else None,
             giorni_extra[2] if len(giorni_extra) > 2 else None,
@@ -1115,3 +1133,4 @@ if __name__ == '__main__':
     print("⚠️  Premi CTRL+C per fermare il server")
     print("")
     app.run(debug=True, host='0.0.0.0', port=5000)
+

@@ -134,8 +134,10 @@
                     </tr>
                     <!-- Riga giorni -->
                     <tr>
-                        {% for giorno in range(1, num_giorni + 1) %}
-                        <th>{{ (giorno % 31) if (giorno % 31) != 0 else 31 }}</th>
+                        {% for mese in mesi %}
+                            {% for giorno in range(1, mese.giorni + 1) %}
+                            <th>{{ giorno }}</th>
+                            {% endfor %}
                         {% endfor %}
                     </tr>
                 </thead>
@@ -237,8 +239,9 @@ $(document).ready(function() {
 
 function coloraWeekend() {
     // Colora intestazioni e celle weekend
+    const inizioAnno = new Date(anno, 0, 1);
     for (let giorno = 1; giorno <= {{ num_giorni }}; giorno++) {
-        const data = new Date(anno, 0, giorno);
+        const data = new Date(inizioAnno.getTime() + (giorno - 1) * 24 * 60 * 60 * 1000);
         const weekday = data.getDay(); // 0=Dom, 6=Sab
         
         if (weekday === 0 || weekday === 6) {
@@ -256,12 +259,13 @@ function coloraWeekend() {
 
 function popolaCalendario() {
     // Per ogni impegno, colora le celle corrispondenti
+    const inizioAnno = new Date(anno, 0, 1);
+    
     impegni.forEach(impegno => {
         const dataInizio = new Date(impegno.data_inizio);
         const dataFine = new Date(impegno.data_fine);
         
         // Calcola giorno inizio e fine nell'anno
-        const inizioAnno = new Date(anno, 0, 1);
         const giornoInizio = Math.floor((dataInizio - inizioAnno) / (1000 * 60 * 60 * 24)) + 1;
         const giornoFine = Math.floor((dataFine - inizioAnno) / (1000 * 60 * 60 * 24)) + 1;
         
@@ -273,8 +277,8 @@ function popolaCalendario() {
         
         // Colora solo giorni lavorativi (Lun-Ven) + giorni extra
         for (let g = Math.max(1, giornoInizio); g <= Math.min(giornoFine, {{ num_giorni }}); g++) {
-            // Calcola data del giorno
-            const dataGiorno = new Date(anno, 0, g);
+            // Calcola data del giorno usando offset corretto
+            const dataGiorno = new Date(inizioAnno.getTime() + (g - 1) * 24 * 60 * 60 * 1000);
             const dataGiornoStr = dataGiorno.toISOString().split('T')[0];
             const weekday = dataGiorno.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
             
