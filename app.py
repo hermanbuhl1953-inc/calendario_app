@@ -7,7 +7,7 @@ Calendario Istruttori - Flask App
 from flask import Flask, render_template, request, jsonify, send_file
 from datetime import datetime, timedelta
 import calendar as cal_module
-from database import get_db, calcola_data_fine, get_festivi_italiani
+from database import get_db, calcola_data_fine, get_festivi_italiani, log_action
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -489,6 +489,13 @@ def api_create_impegno():
         impegno_id = c.lastrowid
         conn.commit()
         conn.close()
+
+        # Traccia creazione impegno
+        log_action(
+            "CREATE",
+            f"Impegno {impegno_id} creato per istruttore {data['istruttore_id']} (attivita {data['attivita_id']}) dal {data['data_inizio']} per {data['giorni_lavorativi']} giorni",
+            request.headers.get('User-Agent', ''),
+        )
         
         return jsonify({'success': True, 'id': impegno_id})
     except KeyError as e:
@@ -550,6 +557,13 @@ def api_update_impegno(impegno_id):
         ))
         conn.commit()
         conn.close()
+
+        # Traccia modifica impegno
+        log_action(
+            "UPDATE",
+            f"Impegno {impegno_id} aggiornato (istruttore {data['istruttore_id']}, attivita {data['attivita_id']}, inizio {data['data_inizio']}, giorni {data['giorni_lavorativi']})",
+            request.headers.get('User-Agent', ''),
+        )
         
         return jsonify({'success': True})
     except KeyError as e:
@@ -564,6 +578,13 @@ def api_delete_impegno(impegno_id):
     conn.execute('DELETE FROM impegni WHERE id = ?', (impegno_id,))
     conn.commit()
     conn.close()
+
+    # Traccia eliminazione impegno
+    log_action(
+        "DELETE",
+        f"Impegno {impegno_id} eliminato",
+        request.headers.get('User-Agent', ''),
+    )
     
     return jsonify({'success': True})
 
@@ -863,6 +884,13 @@ def api_create_sostituzione():
         sostituzione_id = c.lastrowid
         conn.commit()
         conn.close()
+
+        # Traccia creazione sostituzione
+        log_action(
+            "CREATE",
+            f"Sostituzione {sostituzione_id} su impegno {data['impegno_id']} (orig {impegno['istruttore_id']} -> sost {data['istruttore_sostituto_id']}) in data {data['data_sostituzione']}",
+            request.headers.get('User-Agent', ''),
+        )
         
         return jsonify({'success': True, 'id': sostituzione_id})
     except Exception as e:
@@ -876,6 +904,13 @@ def api_delete_sostituzione(sostituzione_id):
     conn.execute('DELETE FROM sostituzioni WHERE id = ?', (sostituzione_id,))
     conn.commit()
     conn.close()
+
+    # Traccia eliminazione sostituzione
+    log_action(
+        "DELETE",
+        f"Sostituzione {sostituzione_id} eliminata",
+        request.headers.get('User-Agent', ''),
+    )
     
     return jsonify({'success': True})
 
