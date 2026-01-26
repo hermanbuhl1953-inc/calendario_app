@@ -6,6 +6,29 @@ Database setup e gestione per Calendario Istruttori
 
 import sqlite3
 from datetime import datetime, timedelta
+import os
+
+
+def log_action(action, description, user_agent=""):
+    """Registra un'azione nel database di audit"""
+    try:
+        db_path = os.environ.get("DB_PATH", "calendario.db")
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+
+        c.execute(
+            '''
+            INSERT INTO audit_log (action, description, timestamp, user_agent)
+            VALUES (?, ?, ?, ?)
+            ''',
+            (action, description, datetime.now().isoformat(), user_agent),
+        )
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"⚠️ Error logging action: {e}")
 
 def get_festivi_italiani(anno):
     """Restituisce lista date festive italiane per un anno"""
@@ -53,6 +76,17 @@ def init_db():
     conn = sqlite3.connect('calendario.db')
     c = conn.cursor()
     
+    # Tabella Audit Log
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            description TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            user_agent TEXT
+        )
+    ''')
+
     # Tabella Istruttori
     c.execute('''
         CREATE TABLE IF NOT EXISTS istruttori (
