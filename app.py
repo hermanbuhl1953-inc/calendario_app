@@ -1074,6 +1074,26 @@ def export_excel():
     )
 
 # ============================================================================
+# AUDIT LOG
+# ============================================================================
+
+@app.route('/audit-log')
+def audit_log():
+    """Visualizza il log di audit di tutte le azioni"""
+    conn = get_db()
+
+    # Prendi gli ultimi 500 log
+    logs = conn.execute('''
+        SELECT * FROM audit_log
+        ORDER BY timestamp DESC
+        LIMIT 500
+    ''').fetchall()
+
+    conn.close()
+
+    return render_template('audit_log.html', logs=logs)
+
+# ============================================================================
 # MAIN
 # ============================================================================
 
