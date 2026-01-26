@@ -362,7 +362,7 @@ function mostraDettaglioImpegno(impegno) {
     
     if (impegno.id_corso) {
         $('#btnVaiCorso').show().off('click').on('click', function() {
-            window.location.href = `/corso/${impegno.id_corso}`;
+            window.location.href = `/corso/${encodeURIComponent(impegno.id_corso)}`;
         });
     } else {
         $('#btnVaiCorso').hide();
@@ -392,7 +392,7 @@ function mostraDettaglioSostituzione(impegno, sost) {
     
     if (impegno.id_corso) {
         $('#btnVaiCorso').show().off('click').on('click', function() {
-            window.location.href = `/corso/${impegno.id_corso}`;
+            window.location.href = `/corso/${encodeURIComponent(impegno.id_corso)}`;
         });
     } else {
         $('#btnVaiCorso').hide();
@@ -432,3 +432,4 @@ function mostraLegenda() {
 </mso:CustomDocumentProperties>
 </xml><![endif]-->
 <title></title></head>
+
