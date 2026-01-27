@@ -121,6 +121,22 @@
 
 {% block extra_scripts %}
 <script>
+function normalizeColor(hex) {
+    if (!hex) return '#6c757d';
+    if (hex.startsWith('#')) return hex;
+    return `#${hex}`;
+}
+
+function getContrastColor(hex) {
+    const color = hex.replace('#', '');
+    if (color.length !== 6) return '#ffffff';
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 160 ? '#0f1720' : '#ffffff';
+}
+
 $(document).ready(function() {
     // Carica dashboard
     $.getJSON('/api/dashboard', function(data) {
@@ -151,12 +167,14 @@ $(document).ready(function() {
             `);
         } else {
             data.impegni.forEach(function(imp) {
+                const bg = normalizeColor(imp.colore);
+                const textColor = getContrastColor(bg);
                 const card = `
                     <div class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between align-items-center">
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center mb-1">
-                                    <span class="badge rounded-pill me-2" style="background-color: ${imp.colore || '#6c757d'}; min-width: 120px;">
+                                    <span class="badge rounded-pill me-2" style="background-color: ${bg}; color: ${textColor}; min-width: 120px;">
                                         ${imp.attivita_nome}
                                     </span>
                                     <strong>${imp.istruttore_nome}</strong>
@@ -183,9 +201,9 @@ $(document).ready(function() {
         prossimi.empty();
         
         data.prossimi_7_giorni.forEach(function(giorno) {
-            const data = new Date(giorno.data);
-            const nomeGiorno = giorni[data.getDay()].substring(0, 3);
-            const isWeekend = data.getDay() === 0 || data.getDay() === 6;
+            const dataGiorno = new Date(giorno.data);
+            const nomeGiorno = giorni[dataGiorno.getDay()].substring(0, 3);
+            const isWeekend = dataGiorno.getDay() === 0 || dataGiorno.getDay() === 6;
             const isToday = giorno.data === data.oggi;
             
             let bgClass = 'bg-light';
@@ -197,17 +215,20 @@ $(document).ready(function() {
                 bgClass = 'bg-warning bg-opacity-25';
             }
             
+            const calendarioUrl = `/calendario/${dataGiorno.getFullYear()}?day=${giorno.data}`;
             const card = `
                 <div class="col">
-                    <div class="card ${bgClass} border-0 shadow-sm">
-                        <div class="card-body p-2 ${textClass}">
-                            <div class="fw-bold">${nomeGiorno}</div>
-                            <div class="fs-5">${data.getDate()}</div>
-                            <div class="small">
-                                ${giorno.count > 0 ? `<span class="badge bg-success">${giorno.count}</span>` : '<span class="text-muted">-</span>'}
+                    <a class="text-decoration-none" href="${calendarioUrl}">
+                        <div class="card ${bgClass} border-0 shadow-sm">
+                            <div class="card-body p-2 ${textClass}">
+                                <div class="fw-bold">${nomeGiorno}</div>
+                                <div class="fs-5">${dataGiorno.getDate()}</div>
+                                <div class="small">
+                                    ${giorno.count > 0 ? `<span class="badge bg-success">${giorno.count}</span>` : '<span class="text-muted">-</span>'}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             `;
             prossimi.append(card);

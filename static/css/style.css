@@ -5,6 +5,95 @@ body {
     background-color: #f8f9fa;
 }
 
+/* Dark mode baseline */
+body.dark-mode {
+    background-color: #0f1720;
+    color: #e2e8f0;
+}
+
+body.dark-mode .card,
+body.dark-mode .list-group-item,
+body.dark-mode .modal-content,
+body.dark-mode .table,
+body.dark-mode .table thead th,
+body.dark-mode .table tbody td,
+body.dark-mode .table tbody th {
+    background-color: #111827;
+    color: #e2e8f0;
+    border-color: #1f2937;
+}
+
+body.dark-mode .navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+body.dark-mode .navbar,
+body.dark-mode .navbar .dropdown-menu {
+    background-color: #0b1220 !important;
+}
+
+body.dark-mode .dropdown-menu,
+body.dark-mode .card-header,
+body.dark-mode footer {
+    background-color: #0b1220;
+    color: #e2e8f0;
+}
+
+body.dark-mode .btn-outline-primary,
+body.dark-mode .btn-outline-success,
+body.dark-mode .btn-outline-info,
+body.dark-mode .btn-outline-secondary {
+    color: #e2e8f0;
+    border-color: #3b82f6;
+}
+
+body.dark-mode .btn-outline-primary:hover,
+body.dark-mode .btn-outline-success:hover,
+body.dark-mode .btn-outline-info:hover,
+body.dark-mode .btn-outline-secondary:hover {
+    background-color: #1d4ed8;
+    color: #fff;
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: #0f1720;
+    color: #e2e8f0;
+    border-color: #1f2937;
+}
+
+body.dark-mode .list-group-item-action:hover {
+    background-color: #1f2937;
+}
+
+body.dark-mode .bg-light,
+body.dark-mode .table-hover tbody tr:hover {
+    background-color: #111827 !important;
+}
+
+body.dark-mode .bg-white,
+body.dark-mode .alert-info,
+body.dark-mode .alert-warning,
+body.dark-mode .alert-danger,
+body.dark-mode .alert-success {
+    background-color: #111827 !important;
+    color: #e2e8f0;
+    border-color: #1f2937;
+}
+
+body.dark-mode .text-muted {
+    color: #9ca3af !important;
+}
+
+body.dark-mode .calendario-table th,
+body.dark-mode .calendario-table td {
+    border-color: #1f2937;
+}
+
+body.dark-mode .calendario-table thead th {
+    background-color: #111827;
+}
+
 .jumbotron {
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }

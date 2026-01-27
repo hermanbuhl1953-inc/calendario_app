@@ -79,6 +79,11 @@
 .anno-selector {
     margin-bottom: 20px;
 }
+
+.colonna-evidenziata {
+    outline: 2px solid #f39c12;
+    box-shadow: inset 0 0 0 2px #f39c12;
+}
 </style>
 {% endblock %}
 
@@ -231,10 +236,12 @@ const anno = {{ anno }};
 const impegni = {{ impegni|tojson }};
 const sostituzioni = {{ sostituzioni|tojson }};
 const festivi = {{ festivi|tojson }};
+const numGiorni = {{ num_giorni }};
 
 $(document).ready(function() {
     coloraWeekend();
     popolaCalendario();
+    scrollToGiornoFromQuery();
 });
 
 function coloraWeekend() {
@@ -341,6 +348,34 @@ function popolaCalendario() {
             }
         }
     });
+}
+
+function scrollToGiornoFromQuery() {
+    const params = new URLSearchParams(window.location.search);
+    const dayParam = params.get('day');
+    if (!dayParam) return;
+    const targetDate = new Date(dayParam);
+    if (Number.isNaN(targetDate.getTime())) return;
+    if (targetDate.getFullYear() !== anno) return;
+    const giornoAnno = Math.floor((targetDate - new Date(anno, 0, 1)) / (1000 * 60 * 60 * 24)) + 1;
+    if (giornoAnno < 1 || giornoAnno > numGiorni) return;
+    evidenziaColonna(giornoAnno);
+    const headerCell = $('.calendario-table thead tr:eq(1) th').eq(giornoAnno - 1);
+    if (!headerCell.length) return;
+    const container = $('.calendario-container');
+    const scrollLeft = headerCell.position().left + container.scrollLeft() - 60;
+    container.animate({ scrollLeft: scrollLeft }, 400);
+}
+
+function evidenziaColonna(giorno) {
+    const celle = $(`.cella-giorno[id$="-${giorno}"]`);
+    const headerCell = $('.calendario-table thead tr:eq(1) th').eq(giorno - 1);
+    headerCell.addClass('colonna-evidenziata');
+    celle.addClass('colonna-evidenziata');
+    setTimeout(() => {
+        headerCell.removeClass('colonna-evidenziata');
+        celle.removeClass('colonna-evidenziata');
+    }, 2500);
 }
 
 function mostraDettaglioImpegno(impegno) {

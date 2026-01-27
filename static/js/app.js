@@ -84,4 +84,31 @@ $(document).ready(function() {
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    initDarkMode();
 });
+
+// Gestione Dark Mode
+function initDarkMode() {
+    const saved = localStorage.getItem('calendario-theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const startDark = saved ? saved === 'dark' : prefersDark;
+    applyDarkMode(startDark);
+    $('#btnDarkMode').on('click', function() {
+        applyDarkMode(!$('body').hasClass('dark-mode'));
+    });
+}
+
+function applyDarkMode(enabled) {
+    $('body').toggleClass('dark-mode', enabled);
+    const btn = $('#btnDarkMode');
+    if (enabled) {
+        btn.removeClass('btn-outline-light').addClass('btn-light text-dark');
+        btn.html('<i class="fas fa-sun"></i> Light Mode');
+        localStorage.setItem('calendario-theme', 'dark');
+    } else {
+        btn.removeClass('btn-light text-dark').addClass('btn-outline-light');
+        btn.html('<i class="fas fa-moon"></i> Dark Mode');
+        localStorage.setItem('calendario-theme', 'light');
+    }
+}
