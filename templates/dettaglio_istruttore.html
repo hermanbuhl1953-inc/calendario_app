@@ -242,7 +242,7 @@
                         <tbody>
                             {% for s in sost_out %}
                             <tr>
-                                <td>{{ s.data_sostituzione }}</td>
+                                <td>{{ s.data_sostituzione|itdate }}</td>
                                 <td>{{ s.sostituto_nome }}</td>
                                 <td>
                                     <span class="badge" style="background-color: #{{ s.colore }};">
@@ -283,7 +283,7 @@
                         <tbody>
                             {% for s in sost_in %}
                             <tr>
-                                <td>{{ s.data_sostituzione }}</td>
+                                <td>{{ s.data_sostituzione|itdate }}</td>
                                 <td>{{ s.originale_nome }}</td>
                                 <td>
                                     <span class="badge" style="background-color: #{{ s.colore }};">
@@ -337,8 +337,8 @@
                                     -
                                     {% endif %}
                                 </td>
-                                <td>{{ imp.data_inizio }}</td>
-                                <td>{{ imp.data_fine }}</td>
+                                <td>{{ imp.data_inizio|itdate }}</td>
+                                <td>{{ imp.data_fine|itdate }}</td>
                                 <td>
                                     <span class="badge" style="background-color: #{{ imp.colore }};">
                                         {{ imp.attivita_nome }}
@@ -537,8 +537,18 @@ function mostraDettaglio(impegno) {
 }
 
 function formatData(dataStr) {
-    const data = new Date(dataStr);
-    return data.toLocaleDateString('it-IT');
+    if (!dataStr) return '';
+    const iso = String(dataStr).split('T')[0];
+    const parts = iso.split('-');
+    if (parts.length === 3) {
+        const [yyyy, mm, dd] = parts;
+        return `${dd.padStart(2,'0')}/${mm.padStart(2,'0')}/${yyyy}`;
+    }
+    const d = new Date(dataStr);
+    const day = String(d.getDate()).padStart(2,'0');
+    const mon = String(d.getMonth()+1).padStart(2,'0');
+    const yr = String(d.getFullYear());
+    return `${day}/${mon}/${yr}`;
 }
 </script>
 {% endblock %}

@@ -211,8 +211,8 @@
                                 {% for imp in impegni %}
                                 <tr>
                                     <td>{{ imp.istruttore_nome }}</td>
-                                    <td>{{ imp.data_inizio }}</td>
-                                    <td>{{ imp.data_fine }}</td>
+                                    <td>{{ imp.data_inizio|itdate }}</td>
+                                    <td>{{ imp.data_fine|itdate }}</td>
                                     <td>
                                         <span class="badge" style="background-color: #{{ imp.colore }};">
                                             {{ imp.attivita_nome }}

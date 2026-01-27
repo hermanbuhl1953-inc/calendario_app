@@ -458,10 +458,15 @@ function salvaImpegno() {
                 const resp = xhr.responseJSON;
                 let msg = resp.messaggio || 'Sovrapposizione rilevata';
                 
+                const fmt = (s) => {
+                    const iso = String(s).split('T')[0];
+                    const [y,m,d] = iso.split('-');
+                    return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
+                };
                 if (resp.conflitti && resp.conflitti.length > 0) {
-                    msg += '\\n\\nDettagli conflitti:';
+                    msg += '\n\nDettagli conflitti:';
                     resp.conflitti.forEach(c => {
-                        msg += `\\n- ${c.attivita_nome} dal ${c.data_inizio} al ${c.data_fine}`;
+                        msg += `\n- ${c.attivita_nome} dal ${fmt(c.data_inizio)} al ${fmt(c.data_fine)}`;
                     });
                 }
                 

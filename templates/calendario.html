@@ -437,8 +437,18 @@ function mostraDettaglioSostituzione(impegno, sost) {
 }
 
 function formatData(dataStr) {
-    const data = new Date(dataStr);
-    return data.toLocaleDateString('it-IT');
+    if (!dataStr) return '';
+    const iso = String(dataStr).split('T')[0];
+    const parts = iso.split('-');
+    if (parts.length === 3) {
+        const [yyyy, mm, dd] = parts;
+        return `${dd.padStart(2,'0')}/${mm.padStart(2,'0')}/${yyyy}`;
+    }
+    const d = new Date(dataStr);
+    const day = String(d.getDate()).padStart(2,'0');
+    const mon = String(d.getMonth()+1).padStart(2,'0');
+    const yr = String(d.getFullYear());
+    return `${day}/${mon}/${yr}`;
 }
 
 function mostraLegenda() {

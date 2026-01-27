@@ -448,7 +448,7 @@ function renderAttivita() {
             <tr>
                 <td>${att.istruttore_nome}</td>
                 <td>${att.attivita_nome}</td>
-                <td>${att.data_inizio}</td>
+                <td>${formatData(att.data_inizio)}</td>
                 <td>${att.giorni_lavorativi}</td>
                 <td>
                     <button class="btn btn-sm btn-danger" onclick="rimuoviAttivita(${idx})">
@@ -550,7 +550,7 @@ function riepilogo() {
     
     const inizio = $('#corsoDataInizio').val();
     const fine = $('#corsoDataFine').val();
-    $('#riepilogoPeriodo').text(`${inizio} → ${fine}`);
+    $('#riepilogoPeriodo').text(`${formatData(inizio)} → ${formatData(fine)}`);
     
     const d1 = new Date(inizio);
     const d2 = new Date(fine);
@@ -583,7 +583,7 @@ function creaCorso() {
         contentType: 'application/json',
         data: JSON.stringify(datiCorso),
         success: function(resp) {
-            alert('✅ Corso creato con successo!');
+            alert(`✅ Corso creato con successo!\nPeriodo: ${formatData(datiCorso.data_inizio)} → ${formatData(datiCorso.data_fine)}`);
             window.location.href = `/corso/${resp.id_corso}`;
         },
         error: function(xhr) {
