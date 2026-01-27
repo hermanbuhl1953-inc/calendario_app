@@ -305,6 +305,23 @@ $(document).ready(function() {
     
     // Applica filtri quando cambiano
     $('#filtroIstruttore, #filtroAttivita, #filtroDataDa, #filtroDataA').on('change', applicaFiltri);
+
+    // Pre-compila filtri da querystring (istruttore, data)
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const istruttore = params.get('istruttore');
+        const data = params.get('data');
+        if (istruttore) {
+            $('#filtroIstruttore').val(istruttore);
+        }
+        if (data) {
+            $('#filtroDataDa').val(data);
+            $('#filtroDataA').val(data);
+        }
+        if (istruttore || data) {
+            applicaFiltri();
+        }
+    } catch (e) {}
 });
 
 function applicaFiltri() {
