@@ -49,9 +49,9 @@
                         <td><strong>{{ corso.id_corso }}</strong></td>
                         <td>
                             <i class="fas fa-calendar-day"></i> 
-                            {{ corso.data_inizio | replace('-', '/') | reverse | replace('/', '.') | reverse }}
+                            {{ corso.data_inizio|itdate }}
                             →
-                            {{ corso.data_fine | replace('-', '/') | reverse | replace('/', '.') | reverse }}
+                            {{ corso.data_fine|itdate }}
                         </td>
                         <td>
                             {% set inizio = corso.data_inizio %}
@@ -142,13 +142,13 @@ function applicaFiltriCorsi() {
             mostra = false;
         }
         
-        // Filtro data (semplificato - controlla solo se il testo periodo contiene)
+        // Filtro data: estrai dd/mm/yyyy dal testo e confronta con input ISO
         if (dataDa || dataA) {
-            const match = periodo.match(/(\d{2}\.\d{2}\.\d{4})/g);
+            const match = periodo.match(/(\d{2}\/\d{2}\/\d{4})/g);
             if (match && match.length >= 2) {
-                const inizio = match[0].split('.').reverse().join('-');
-                const fine = match[1].split('.').reverse().join('-');
-                
+                const toIso = (d) => { const [dd, mm, yyyy] = d.split('/'); return `${yyyy}-${mm}-${dd}`; };
+                const inizio = toIso(match[0]);
+                const fine = toIso(match[1]);
                 if (dataDa && fine < dataDa) mostra = false;
                 if (dataA && inizio > dataA) mostra = false;
             }

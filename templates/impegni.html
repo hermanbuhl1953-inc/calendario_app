@@ -103,9 +103,9 @@
                                         {{ imp.attivita_nome }}
                                     </span>
                                 </td>
-                                <td>{{ imp.data_inizio }}</td>
+                                <td>{{ imp.data_inizio|itdate }}</td>
                                 <td>{{ imp.giorni_lavorativi }}</td>
-                                <td>{{ imp.data_fine }}</td>
+                                <td>{{ imp.data_fine|itdate }}</td>
                                 <td>{{ imp.note or '-' }}</td>
                                 <td>
                                     <button class="btn btn-sm btn-warning" onclick="modificaImpegno({{ imp.id }})">

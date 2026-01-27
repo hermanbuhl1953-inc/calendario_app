@@ -23,6 +23,27 @@ except Exception as e:
     print(f"⚠️ init_db() error: {e}")
 
 
+@app.template_filter('itdate')
+def itdate(value):
+    """Formatta 'YYYY-MM-DD' in 'DD/MM/YYYY' (fallback su parsing date)."""
+    try:
+        if not value:
+            return ''
+        s = str(value)
+        parts = s.split('T')[0].split('-')
+        if len(parts) == 3:
+            yyyy, mm, dd = parts
+            return f"{dd.zfill(2)}/{mm.zfill(2)}/{yyyy}"
+        d = datetime.strptime(s, '%Y-%m-%d')
+        return f"{d.day:02d}/{d.month:02d}/{d.year}"
+    except Exception:
+        try:
+            d = datetime.fromisoformat(str(value).split('T')[0])
+            return f"{d.day:02d}/{d.month:02d}/{d.year}"
+        except Exception:
+            return str(value)
+
+
 def giorni_lavorativi_tra(data_inizio, data_fine):
     """Calcola giorni lavorativi (lunedì-venerdì) tra due date"""
     if not data_inizio or not data_fine:

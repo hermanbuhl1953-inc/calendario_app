@@ -137,6 +137,21 @@
 <script>
 let impegniOggi = []; // Salva tutti gli impegni per filtro
 
+function formatData(dataStr) {
+    if (!dataStr) return '';
+    const iso = String(dataStr).split('T')[0];
+    const parts = iso.split('-');
+    if (parts.length === 3) {
+        const [yyyy, mm, dd] = parts;
+        return `${dd.padStart(2,'0')}/${mm.padStart(2,'0')}/${yyyy}`;
+    }
+    const d = new Date(dataStr);
+    const day = String(d.getDate()).padStart(2,'0');
+    const mon = String(d.getMonth()+1).padStart(2,'0');
+    const yr = String(d.getFullYear());
+    return `${day}/${mon}/${yr}`;
+}
+
 function normalizeColor(hex) {
     if (!hex) return '#6c757d';
     if (hex.startsWith('#')) return hex;
@@ -192,7 +207,7 @@ function renderImpegni(filtraCategoria = '') {
                         </div>
                         <div class="text-muted small">
                             ${imp.id_corso ? `<i class="fas fa-graduation-cap"></i> ${imp.id_corso}` : ''}
-                            <span class="ms-2"><i class="fas fa-calendar"></i> ${imp.data_inizio} → ${imp.data_fine}</span>
+                            <span class="ms-2"><i class="fas fa-calendar"></i> ${formatData(imp.data_inizio)} → ${formatData(imp.data_fine)}</span>
                             ${imp.giorni_lavorativi ? `<span class="ms-2"><i class="fas fa-clock"></i> ${imp.giorni_lavorativi} giorni</span>` : ''}
                         </div>
                         ${imp.note ? `<div class="small mt-1"><i class="fas fa-sticky-note"></i> ${imp.note}</div>` : ''}
@@ -296,7 +311,7 @@ $(document).ready(function() {
                     <div class="list-group-item list-group-item-${badge}">
                         <div class="small fw-bold">${conf.istruttore}</div>
                         <div class="small">${conf.attivita1} vs ${conf.attivita2}</div>
-                        <div class="small text-muted">${conf.inizio1} / ${conf.inizio2}</div>
+                        <div class="small text-muted">${formatData(conf.inizio1)} / ${formatData(conf.inizio2)}</div>
                     </div>
                 `);
             });
