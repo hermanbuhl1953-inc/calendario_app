@@ -721,6 +721,60 @@ def api_statistiche():
     
     return jsonify(stats)
 
+@app.route('/api/dashboard')
+def api_dashboard():
+    """Dashboard giornaliera - impegni di oggi"""
+    from datetime import date
+    conn = get_db()
+    
+    oggi = date.today().strftime('%Y-%m-%d')
+    
+    # Impegni attivi oggi
+    impegni_oggi = conn.execute("""
+        SELECT i.*, 
+               ist.nome as istruttore_nome,
+               ta.nome as attivita_nome,
+               ta.colore,
+               ta.categoria
+        FROM impegni i
+        JOIN istruttori ist ON i.istruttore_id = ist.id
+        JOIN tipi_attivita ta ON i.attivita_id = ta.id
+        WHERE ? BETWEEN i.data_inizio AND i.data_fine
+        ORDER BY ist.nome, i.data_inizio
+    """, (oggi,)).fetchall()
+    
+    # Statistiche giornaliere
+    stats_oggi = {
+        'totale_impegni': len(impegni_oggi),
+        'corsi_attivi': len(set(imp['id_corso'] for imp in impegni_oggi if imp['id_corso'])),
+        'istruttori_occupati': len(set(imp['istruttore_id'] for imp in impegni_oggi))
+    }
+    
+    # Prossimi 7 giorni - impegni per data
+    from datetime import timedelta
+    prossimi_giorni = []
+    for i in range(7):
+        data = (date.today() + timedelta(days=i)).strftime('%Y-%m-%d')
+        count = conn.execute("""
+            SELECT COUNT(*) as cnt 
+            FROM impegni 
+            WHERE ? BETWEEN data_inizio AND data_fine
+        """, (data,)).fetchone()['cnt']
+        prossimi_giorni.append({
+            'data': data,
+            'count': count
+        })
+    
+    conn.close()
+    
+    return jsonify({
+        'oggi': oggi,
+        'impegni': [dict(row) for row in impegni_oggi],
+        'stats': stats_oggi,
+        'prossimi_7_giorni': prossimi_giorni
+    })
+
+
 # ============================================================================
 # API GESTIONE ISTRUTTORI
 # ============================================================================

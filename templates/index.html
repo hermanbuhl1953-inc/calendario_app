@@ -1,125 +1,117 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Calendario Istruttori{% endblock %}
+{% block title %}Dashboard - Calendario Istruttori{% endblock %}
 
 {% block content %}
-<div class="row">
+<!-- Header Giornaliero -->
+<div class="row mb-4">
     <div class="col-12">
-        <div class="jumbotron bg-primary text-white p-5 rounded">
-            <h1 class="display-4"><i class="fas fa-calendar-alt"></i> Calendario Istruttori</h1>
-            <p class="lead">Sistema di gestione impegni per istruttori ferroviari</p>
-            <hr class="my-4 bg-white">
-            <p>Gestisci facilmente corsi, esami, ferie e altri impegni. Visualizza i calendari e esporta in Excel.</p>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <!-- Card Statistiche -->
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-success">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fas fa-list-check"></i> Impegni</h5>
-                <p class="card-text display-4" id="stat-impegni">-</p>
-                <small>Totale impegni registrati</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-info">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fas fa-graduation-cap"></i> Corsi</h5>
-                <p class="card-text display-4" id="stat-corsi">-</p>
-                <small>Corsi attivi</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-warning">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fas fa-users"></i> Istruttori</h5>
-                <p class="card-text display-4" id="stat-istruttori">-</p>
-                <small>Istruttori attivi</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-white bg-danger">
-            <div class="card-body">
-                <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> Sovrapposizioni</h5>
-                <p class="card-text display-4" id="stat-sovrapposizioni">-</p>
-                <small>Conflitti da risolvere</small>
+        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body text-white py-4">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h2 class="mb-1"><i class="fas fa-calendar-day"></i> <span id="data-oggi">Caricamento...</span></h2>
+                        <p class="mb-0 opacity-75">Dashboard Operativa Giornaliera</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="bg-white bg-opacity-25 rounded p-2">
+                                    <h3 class="mb-0" id="stat-impegni-oggi">-</h3>
+                                    <small>Impegni Oggi</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="bg-white bg-opacity-25 rounded p-2">
+                                    <h3 class="mb-0" id="stat-corsi-oggi">-</h3>
+                                    <small>Corsi Attivi</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="bg-white bg-opacity-25 rounded p-2">
+                                    <h3 class="mb-0" id="stat-istruttori-oggi">-</h3>
+                                    <small>Istruttori</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-6">
-        <div class="card">
+<!-- Impegni di Oggi -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0"><i class="fas fa-list-check text-primary"></i> Impegni di Oggi</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="impegni-oggi-lista" class="list-group list-group-flush">
+                    <!-- Popolato via JS -->
+                    <div class="list-group-item text-center text-muted py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <p>Caricamento impegni...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar Azioni -->
+    <div class="col-lg-4">
+        <!-- Conflitti -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-danger text-white">
+                <h6 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Conflitti da Risolvere</h6>
+            </div>
+            <div class="card-body p-0">
+                <div id="conflitti-lista" class="list-group list-group-flush">
+                    <div class="list-group-item text-center text-muted">
+                        Caricamento...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Azioni Rapide -->
+        <div class="card shadow-sm">
             <div class="card-header bg-primary text-white">
-                <h5><i class="fas fa-rocket"></i> Azioni Rapide</h5>
+                <h6 class="mb-0"><i class="fas fa-bolt"></i> Azioni Rapide</h6>
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="/impegni" class="btn btn-outline-primary btn-lg">
-                        <i class="fas fa-plus"></i> Aggiungi Nuovo Impegno
+                    <a href="/impegni" class="btn btn-outline-primary">
+                        <i class="fas fa-plus"></i> Nuovo Impegno
                     </a>
-                    <a href="/calendario/2025" class="btn btn-outline-success btn-lg">
-                        <i class="fas fa-calendar"></i> Visualizza Calendario 2025
+                    <a href="/calendario/2026" class="btn btn-outline-success">
+                        <i class="fas fa-calendar"></i> Calendario 2026
                     </a>
-                    <a href="/export/excel" class="btn btn-outline-info btn-lg">
+                    <a href="/istruttori" class="btn btn-outline-info">
+                        <i class="fas fa-users"></i> Gestione Istruttori
+                    </a>
+                    <a href="/export/excel" class="btn btn-outline-secondary">
                         <i class="fas fa-download"></i> Esporta Excel
                     </a>
                 </div>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5><i class="fas fa-chart-bar"></i> Attività per Tipo</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="chartTipi" height="200"></canvas>
-            </div>
-        </div>
-    </div>
 </div>
 
-<div class="row mt-4">
+<!-- Prossimi 7 Giorni -->
+<div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-secondary text-white">
-                <h5><i class="fas fa-info-circle"></i> Guida Rapida</h5>
+        <div class="card shadow-sm">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0"><i class="fas fa-calendar-week text-success"></i> Prossimi 7 Giorni</h5>
             </div>
             <div class="card-body">
-                <h6><strong>Come Usare il Sistema:</strong></h6>
-                <ol>
-                    <li><strong>Gestisci Impegni:</strong> Vai su "Impegni" per aggiungere, modificare o eliminare impegni</li>
-                    <li><strong>Visualizza Calendario:</strong> Seleziona l'anno dal menu "Calendari" per vedere la vista annuale</li>
-                    <li><strong>Dettagli Corso:</strong> Click su una cella colorata nel calendario per vedere i dettagli del corso</li>
-                    <li><strong>Export Excel:</strong> Genera un file Excel completo con tutti i dati e i calendari</li>
-                </ol>
-                
-                <h6 class="mt-3"><strong>Legenda Colori:</strong></h6>
-                <div class="row">
-                    <div class="col-md-3">
-                        <span class="badge" style="background-color: #52BE80;">CORSO PDT-CT</span>
-                    </div>
-                    <div class="col-md-3">
-                        <span class="badge" style="background-color: #5DADE2;">CORSO ADT</span>
-                    </div>
-                    <div class="col-md-3">
-                        <span class="badge" style="background-color: #3498DB;">ESAME</span>
-                    </div>
-                    <div class="col-md-3">
-                        <span class="badge" style="background-color: #F1C40F; color: #000;">FERIE</span>
-                    </div>
+                <div class="row text-center" id="prossimi-giorni">
+                    <!-- Popolato via JS -->
+                    <div class="col text-muted">Caricamento...</div>
                 </div>
             </div>
         </div>
@@ -128,49 +120,138 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Carica statistiche
-    $.getJSON('/api/statistiche', function(data) {
-        $('#stat-impegni').text(data.totale_impegni);
-        $('#stat-corsi').text(data.totale_corsi);
-        $('#stat-istruttori').text(data.totale_istruttori);
+    // Carica dashboard
+    $.getJSON('/api/dashboard', function(data) {
+        // Header data
+        const dataOggi = new Date(data.oggi);
+        const giorni = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+        const mesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
+                      'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+        const testoData = `${giorni[dataOggi.getDay()]}, ${dataOggi.getDate()} ${mesi[dataOggi.getMonth()]} ${dataOggi.getFullYear()}`;
+        $('#data-oggi').text(testoData);
         
-        // Grafico tipi attività
-        const labels = data.per_tipo.slice(0, 6).map(t => t.nome);
-        const values = data.per_tipo.slice(0, 6).map(t => t.totale);
+        // Statistiche oggi
+        $('#stat-impegni-oggi').text(data.stats.totale_impegni);
+        $('#stat-corsi-oggi').text(data.stats.corsi_attivi);
+        $('#stat-istruttori-oggi').text(data.stats.istruttori_occupati);
         
-        new Chart($('#chartTipi'), {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Numero Attività',
-                    data: values,
-                    backgroundColor: [
-                        'rgba(82, 190, 128, 0.7)',
-                        'rgba(93, 173, 226, 0.7)',
-                        'rgba(52, 152, 219, 0.7)',
-                        'rgba(243, 156, 18, 0.7)',
-                        'rgba(241, 196, 15, 0.7)',
-                        'rgba(231, 76, 60, 0.7)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true }
-                }
+        // Lista impegni oggi
+        const listaImpegni = $('#impegni-oggi-lista');
+        listaImpegni.empty();
+        
+        if (data.impegni.length === 0) {
+            listaImpegni.append(`
+                <div class="list-group-item text-center text-success py-5">
+                    <i class="fas fa-check-circle fa-3x mb-3"></i>
+                    <h5>Nessun Impegno Oggi!</h5>
+                    <p class="text-muted">Giornata libera per tutti gli istruttori</p>
+                </div>
+            `);
+        } else {
+            data.impegni.forEach(function(imp) {
+                const card = `
+                    <div class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <span class="badge rounded-pill me-2" style="background-color: ${imp.colore || '#6c757d'}; min-width: 120px;">
+                                        ${imp.attivita_nome}
+                                    </span>
+                                    <strong>${imp.istruttore_nome}</strong>
+                                </div>
+                                <div class="text-muted small">
+                                    ${imp.id_corso ? `<i class="fas fa-graduation-cap"></i> ${imp.id_corso}` : ''}
+                                    <span class="ms-2"><i class="fas fa-calendar"></i> ${imp.data_inizio} → ${imp.data_fine}</span>
+                                    ${imp.giorni_lavorativi ? `<span class="ms-2"><i class="fas fa-clock"></i> ${imp.giorni_lavorativi} giorni</span>` : ''}
+                                </div>
+                                ${imp.note ? `<div class="small mt-1"><i class="fas fa-sticky-note"></i> ${imp.note}</div>` : ''}
+                            </div>
+                            <div>
+                                ${imp.id_corso ? `<a href="/corso/${encodeURIComponent(imp.id_corso)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-arrow-right"></i></a>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                listaImpegni.append(card);
+            });
+        }
+        
+        // Prossimi 7 giorni
+        const prossimi = $('#prossimi-giorni');
+        prossimi.empty();
+        
+        data.prossimi_7_giorni.forEach(function(giorno) {
+            const data = new Date(giorno.data);
+            const nomeGiorno = giorni[data.getDay()].substring(0, 3);
+            const isWeekend = data.getDay() === 0 || data.getDay() === 6;
+            const isToday = giorno.data === data.oggi;
+            
+            let bgClass = 'bg-light';
+            let textClass = 'text-dark';
+            if (isToday) {
+                bgClass = 'bg-primary';
+                textClass = 'text-white';
+            } else if (isWeekend) {
+                bgClass = 'bg-warning bg-opacity-25';
             }
+            
+            const card = `
+                <div class="col">
+                    <div class="card ${bgClass} border-0 shadow-sm">
+                        <div class="card-body p-2 ${textClass}">
+                            <div class="fw-bold">${nomeGiorno}</div>
+                            <div class="fs-5">${data.getDate()}</div>
+                            <div class="small">
+                                ${giorno.count > 0 ? `<span class="badge bg-success">${giorno.count}</span>` : '<span class="text-muted">-</span>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            prossimi.append(card);
         });
+    }).fail(function() {
+        $('#impegni-oggi-lista').html(`
+            <div class="list-group-item text-center text-danger py-5">
+                <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                <h5>Errore Caricamento</h5>
+                <p>Impossibile caricare i dati della dashboard</p>
+            </div>
+        `);
     });
     
-    // Carica sovrapposizioni
-    $.getJSON('/api/sovrapposizioni', function(data) {
-        $('#stat-sovrapposizioni').text(data.length);
+    // Carica conflitti
+    $.getJSON('/api/sovrapposizioni', function(conflitti) {
+        const listaConflitti = $('#conflitti-lista');
+        listaConflitti.empty();
+        
+        if (conflitti.length === 0) {
+            listaConflitti.append(`
+                <div class="list-group-item text-center text-success py-3">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <p class="mb-0 small">Nessun conflitto rilevato</p>
+                </div>
+            `);
+        } else {
+            conflitti.slice(0, 5).forEach(function(conf) {
+                listaConflitti.append(`
+                    <div class="list-group-item list-group-item-danger">
+                        <div class="small fw-bold">${conf.istruttore}</div>
+                        <div class="small text-muted">${conf.data || 'Date sovrapposte'}</div>
+                    </div>
+                `);
+            });
+            
+            if (conflitti.length > 5) {
+                listaConflitti.append(`
+                    <div class="list-group-item text-center">
+                        <small class="text-muted">+${conflitti.length - 5} altri conflitti</small>
+                    </div>
+                `);
+            }
+        }
     });
 });
 </script>
