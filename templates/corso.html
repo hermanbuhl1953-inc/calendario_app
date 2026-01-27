@@ -581,26 +581,47 @@ async function risolviConSpostamento(impegnoId) {
 
 // --- Nuovo Impegno Modal ---
 async function caricaIstruttoriAttivita() {
+    console.log('Caricamento istruttori e attività...');
     try {
-        const [istruttoriRes, attivitaRes] = await Promise.all([
-            fetch('/api/istruttori'),
-            fetch('/api/tipi-attivita')
-        ]);
+        const istruttoriRes = await fetch('/api/istruttori');
+        console.log('Istruttori response status:', istruttoriRes.status);
+        
+        const attivitaRes = await fetch('/api/tipi-attivita');
+        console.log('Attività response status:', attivitaRes.status);
         
         if (istruttoriRes.ok) {
             const istruttori = await istruttoriRes.json();
+            console.log('Istruttori caricati:', istruttori);
             const select = $('#nuovoIstruttoreId');
-            istruttori.forEach(i => {
-                select.append(`<option value="${i.id}">${i.cognome} ${i.nome}</option>`);
-            });
+            if (select.length === 0) {
+                console.error('Select #nuovoIstruttoreId non trovato!');
+            } else {
+                istruttori.forEach(i => {
+                    const nome = `${i.cognome || ''} ${i.nome || ''}`.trim();
+                    select.append(`<option value="${i.id}">${nome}</option>`);
+                });
+                console.log('Istruttori aggiunti al select');
+            }
+        } else {
+            const errText = await istruttoriRes.text();
+            console.error('Errore fetch istruttori:', istruttoriRes.status, errText);
         }
         
         if (attivitaRes.ok) {
             const attivita = await attivitaRes.json();
+            console.log('Attività caricate:', attivita);
             const select = $('#nuovoAttivitaId');
-            attivita.forEach(a => {
-                select.append(`<option value="${a.id}">${a.nome}</option>`);
-            });
+            if (select.length === 0) {
+                console.error('Select #nuovoAttivitaId non trovato!');
+            } else {
+                attivita.forEach(a => {
+                    select.append(`<option value="${a.id}">${a.nome}</option>`);
+                });
+                console.log('Attività aggiunte al select');
+            }
+        } else {
+            const errText = await attivitaRes.text();
+            console.error('Errore fetch attività:', attivitaRes.status, errText);
         }
     } catch (e) {
         console.error('Errore caricamento istruttori/attività:', e);
