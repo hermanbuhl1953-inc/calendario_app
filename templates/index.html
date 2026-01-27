@@ -46,7 +46,21 @@
     <div class="col-lg-8">
         <div class="card shadow-sm">
             <div class="card-header bg-white border-bottom">
-                <h5 class="mb-0"><i class="fas fa-list-check text-primary"></i> Impegni di Oggi</h5>
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="mb-0"><i class="fas fa-list-check text-primary"></i> Impegni di Oggi</h5>
+                    </div>
+                    <div class="col-md-6">
+                        <select class="form-select form-select-sm" id="filtroCategoria" onchange="filtraPerCategoria()">
+                            <option value="">Tutte le categorie</option>
+                            <option value="CORSO">Solo Corsi</option>
+                            <option value="ESAME">Solo Esami</option>
+                            <option value="ADDESTRAMENTO">Solo Addestramento</option>
+                            <option value="ASSENZA">Solo Assenze</option>
+                            <option value="ALTRO">Altro</option>
+                        </select>
+                    </div>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div id="impegni-oggi-lista" class="list-group list-group-flush">
@@ -121,6 +135,8 @@
 
 {% block extra_scripts %}
 <script>
+let impegniOggi = []; // Salva tutti gli impegni per filtro
+
 function normalizeColor(hex) {
     if (!hex) return '#6c757d';
     if (hex.startsWith('#')) return hex;
@@ -135,6 +151,60 @@ function getContrastColor(hex) {
     const b = parseInt(color.substr(4, 2), 16);
     const yiq = (r * 299 + g * 587 + b * 114) / 1000;
     return yiq >= 160 ? '#0f1720' : '#ffffff';
+}
+
+function filtraPerCategoria() {
+    const categoria = $('#filtroCategoria').val();
+    renderImpegni(categoria);
+}
+
+function renderImpegni(filtraCategoria = '') {
+    const listaImpegni = $('#impegni-oggi-lista');
+    listaImpegni.empty();
+    
+    let impegniFiltrati = impegniOggi;
+    if (filtraCategoria) {
+        impegniFiltrati = impegniOggi.filter(imp => imp.categoria === filtraCategoria);
+    }
+    
+    if (impegniFiltrati.length === 0) {
+        listaImpegni.append(`
+            <div class="list-group-item text-center text-muted py-5">
+                <i class="fas fa-filter fa-2x mb-3"></i>
+                <h5>Nessun impegno trovato${filtraCategoria ? ' per questa categoria' : ''}!</h5>
+            </div>
+        `);
+        return;
+    }
+    
+    impegniFiltrati.forEach(function(imp) {
+        const bg = normalizeColor(imp.colore);
+        const textColor = getContrastColor(bg);
+        const card = `
+            <div class="list-group-item list-group-item-action" data-categoria="${imp.categoria}">
+                <div class="d-flex w-100 justify-content-between align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="badge rounded-pill me-2" style="background-color: ${bg}; color: ${textColor}; min-width: 120px;">
+                                ${imp.attivita_nome}
+                            </span>
+                            <strong>${imp.istruttore_nome}</strong>
+                        </div>
+                        <div class="text-muted small">
+                            ${imp.id_corso ? `<i class="fas fa-graduation-cap"></i> ${imp.id_corso}` : ''}
+                            <span class="ms-2"><i class="fas fa-calendar"></i> ${imp.data_inizio} → ${imp.data_fine}</span>
+                            ${imp.giorni_lavorativi ? `<span class="ms-2"><i class="fas fa-clock"></i> ${imp.giorni_lavorativi} giorni</span>` : ''}
+                        </div>
+                        ${imp.note ? `<div class="small mt-1"><i class="fas fa-sticky-note"></i> ${imp.note}</div>` : ''}
+                    </div>
+                    <div>
+                        ${imp.id_corso ? `<a href="/corso/${encodeURIComponent(imp.id_corso)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-arrow-right"></i></a>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        listaImpegni.append(card);
+    });
 }
 
 $(document).ready(function() {
@@ -153,48 +223,11 @@ $(document).ready(function() {
         $('#stat-corsi-oggi').text(data.stats.corsi_attivi);
         $('#stat-istruttori-oggi').text(data.stats.istruttori_occupati);
         
-        // Lista impegni oggi
-        const listaImpegni = $('#impegni-oggi-lista');
-        listaImpegni.empty();
+        // Salva impegni globalmente
+        impegniOggi = data.impegni;
         
-        if (data.impegni.length === 0) {
-            listaImpegni.append(`
-                <div class="list-group-item text-center text-success py-5">
-                    <i class="fas fa-check-circle fa-3x mb-3"></i>
-                    <h5>Nessun Impegno Oggi!</h5>
-                    <p class="text-muted">Giornata libera per tutti gli istruttori</p>
-                </div>
-            `);
-        } else {
-            data.impegni.forEach(function(imp) {
-                const bg = normalizeColor(imp.colore);
-                const textColor = getContrastColor(bg);
-                const card = `
-                    <div class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between align-items-center">
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center mb-1">
-                                    <span class="badge rounded-pill me-2" style="background-color: ${bg}; color: ${textColor}; min-width: 120px;">
-                                        ${imp.attivita_nome}
-                                    </span>
-                                    <strong>${imp.istruttore_nome}</strong>
-                                </div>
-                                <div class="text-muted small">
-                                    ${imp.id_corso ? `<i class="fas fa-graduation-cap"></i> ${imp.id_corso}` : ''}
-                                    <span class="ms-2"><i class="fas fa-calendar"></i> ${imp.data_inizio} → ${imp.data_fine}</span>
-                                    ${imp.giorni_lavorativi ? `<span class="ms-2"><i class="fas fa-clock"></i> ${imp.giorni_lavorativi} giorni</span>` : ''}
-                                </div>
-                                ${imp.note ? `<div class="small mt-1"><i class="fas fa-sticky-note"></i> ${imp.note}</div>` : ''}
-                            </div>
-                            <div>
-                                ${imp.id_corso ? `<a href="/corso/${encodeURIComponent(imp.id_corso)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-arrow-right"></i></a>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-                listaImpegni.append(card);
-            });
-        }
+        // Renderizza impegni
+        renderImpegni();
         
         // Prossimi 7 giorni
         const prossimi = $('#prossimi-giorni');
@@ -256,11 +289,14 @@ $(document).ready(function() {
                 </div>
             `);
         } else {
+            // Mostra primi 5 conflitti
             conflitti.slice(0, 5).forEach(function(conf) {
+                const badge = conf.categoria1 === 'ESAME' || conf.categoria2 === 'ESAME' ? 'danger' : 'warning';
                 listaConflitti.append(`
-                    <div class="list-group-item list-group-item-danger">
+                    <div class="list-group-item list-group-item-${badge}">
                         <div class="small fw-bold">${conf.istruttore}</div>
-                        <div class="small text-muted">${conf.data || 'Date sovrapposte'}</div>
+                        <div class="small">${conf.attivita1} vs ${conf.attivita2}</div>
+                        <div class="small text-muted">${conf.inizio1} / ${conf.inizio2}</div>
                     </div>
                 `);
             });
@@ -268,7 +304,7 @@ $(document).ready(function() {
             if (conflitti.length > 5) {
                 listaConflitti.append(`
                     <div class="list-group-item text-center">
-                        <small class="text-muted">+${conflitti.length - 5} altri conflitti</small>
+                        <small class="text-danger fw-bold">+${conflitti.length - 5} altri conflitti!</small>
                     </div>
                 `);
             }

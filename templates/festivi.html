@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Festività Personalizzate - Calendario Istruttori{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-calendar-times"></i> Gestione Festività Personalizzate</h2>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>Info:</strong> Qui puoi aggiungere giorni di chiusura aziendale extra (es. ponti, chiusure straordinarie).
+            Questi giorni saranno esclusi automaticamente dal calcolo degli impegni.
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalFestivo">
+            <i class="fas fa-plus"></i> Aggiungi Festività
+        </button>
+    </div>
+</div>
+
+<!-- Filtro Anno -->
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label class="form-label">Filtra per Anno</label>
+        <select class="form-select" id="filtroAnno" onchange="caricaFestivi()">
+            <option value="">Tutti</option>
+            {% for anno in range(2025, 2031) %}
+            <option value="{{ anno }}" {% if anno == 2026 %}selected{% endif %}>{{ anno }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-table"></i> Festività Personalizzate</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tabellaFestivi">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrizione</th>
+                                <th>Tipo</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabella">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i> Caricamento...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Festivo -->
+<div class="modal fade" id="modalFestivo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Aggiungi Festività</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formFestivo">
+                    <div class="mb-3">
+                        <label class="form-label">Data *</label>
+                        <input type="date" class="form-control" id="festivo_data" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Descrizione *</label>
+                        <input type="text" class="form-control" id="festivo_descrizione" 
+                               placeholder="es. Ponte Immacolata" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" id="festivo_tipo">
+                            <option value="AZIENDALE">Chiusura Aziendale</option>
+                            <option value="PONTE">Ponte</option>
+                            <option value="EXTRA">Festività Extra</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Annulla
+                </button>
+                <button type="button" class="btn btn-primary" onclick="salvaFestivo()">
+                    <i class="fas fa-save"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let modalFestivo = null;
+
+$(document).ready(function() {
+    modalFestivo = new bootstrap.Modal($('#modalFestivo')[0]);
+    caricaFestivi();
+});
+
+function caricaFestivi() {
+    const anno = $('#filtroAnno').val();
+    const url = anno ? `/api/festivi-custom?anno=${anno}` : '/api/festivi-custom';
+    
+    $.getJSON(url, function(data) {
+        const tbody = $('#corpoTabella');
+        tbody.empty();
+        
+        if (data.length === 0) {
+            tbody.html(`
+                <tr>
+                    <td colspan="4" class="text-center text-muted">
+                        Nessuna festività personalizzata trovata
+                    </td>
+                </tr>
+            `);
+            return;
+        }
+        
+        data.forEach(function(festivo) {
+            const badges = {
+                'AZIENDALE': 'bg-warning',
+                'PONTE': 'bg-info',
+                'EXTRA': 'bg-secondary'
+            };
+            
+            const row = `
+                <tr>
+                    <td>${formatData(festivo.data)}</td>
+                    <td>${festivo.descrizione}</td>
+                    <td><span class="badge ${badges[festivo.tipo] || 'bg-secondary'}">${festivo.tipo}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="eliminaFestivo(${festivo.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.append(row);
+        });
+    }).fail(function() {
+        $('#corpoTabella').html(`
+            <tr>
+                <td colspan="4" class="text-center text-danger">
+                    Errore nel caricamento dei dati
+                </td>
+            </tr>
+        `);
+    });
+}
+
+function salvaFestivo() {
+    const data = $('#festivo_data').val();
+    const descrizione = $('#festivo_descrizione').val();
+    const tipo = $('#festivo_tipo').val();
+    
+    if (!data || !descrizione) {
+        alert('Compila tutti i campi obbligatori!');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/festivi-custom',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            data: data,
+            descrizione: descrizione,
+            tipo: tipo
+        }),
+        success: function() {
+            alert('Festività aggiunta con successo!');
+            modalFestivo.hide();
+            $('#formFestivo')[0].reset();
+            caricaFestivi();
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON?.error || 'Errore sconosciuto';
+            alert('Errore: ' + error);
+        }
+    });
+}
+
+function eliminaFestivo(id) {
+    if (confirm('Sei sicuro di voler eliminare questa festività?')) {
+        $.ajax({
+            url: `/api/festivi-custom/${id}`,
+            method: 'DELETE',
+            success: function() {
+                alert('Festività eliminata!');
+                caricaFestivi();
+            },
+            error: function() {
+                alert('Errore nell\'eliminare la festività!');
+            }
+        });
+    }
+}
+
+function formatData(dataStr) {
+    const data = new Date(dataStr);
+    return data.toLocaleDateString('it-IT');
+}
+</script>
+{% endblock %}

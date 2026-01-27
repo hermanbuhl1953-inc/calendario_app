@@ -53,6 +53,50 @@ def get_festivi_italiani(anno):
     
     return festivi
 
+def get_festivi_completi(anno):
+    """Restituisce festivi italiani + festivi aziendali custom"""
+    festivi = get_festivi_italiani(anno)
+    
+    # Aggiungi festivi custom
+    try:
+        conn = get_db()
+        custom = conn.execute(
+            'SELECT data FROM festivi_custom WHERE strftime("%Y", data) = ?',
+            (str(anno),)
+        ).fetchall()
+        conn.close()
+        
+        for row in custom:
+            festivi.append(row['data'])
+    except Exception as e:
+        print(f"⚠️ Errore caricamento festivi custom: {e}")
+    
+    return festivi
+
+def verifica_sovrapposizione(istruttore_id, data_inizio, data_fine, impegno_id_escluso=None):
+    """Verifica se ci sono sovrapposizioni per un istruttore"""
+    conn = get_db()
+    
+    query = '''
+        SELECT i.*, ta.nome as attivita_nome
+        FROM impegni i
+        JOIN tipi_attivita ta ON i.attivita_id = ta.id
+        WHERE i.istruttore_id = ?
+        AND i.data_inizio <= ?
+        AND i.data_fine >= ?
+    '''
+    
+    params = [istruttore_id, data_fine, data_inizio]
+    
+    if impegno_id_escluso:
+        query += ' AND i.id != ?'
+        params.append(impegno_id_escluso)
+    
+    sovrapposizioni = conn.execute(query, params).fetchall()
+    conn.close()
+    
+    return [dict(row) for row in sovrapposizioni]
+
 def calcola_pasqua(anno):
     """Calcola la data di Pasqua usando l'algoritmo di Meeus"""
     a = anno % 19
@@ -143,6 +187,24 @@ def init_db():
             FOREIGN KEY (istruttore_sostituto_id) REFERENCES istruttori(id)
         )
     ''')
+    
+    # Tabella Festività Personalizzate
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS festivi_custom (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data DATE NOT NULL UNIQUE,
+            descrizione TEXT NOT NULL,
+            tipo TEXT DEFAULT 'AZIENDALE',
+            creato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Indici per performance
+    c.execute('CREATE INDEX IF NOT EXISTS idx_impegni_istruttore ON impegni(istruttore_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_impegni_data_inizio ON impegni(data_inizio)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_impegni_data_fine ON impegni(data_fine)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_impegni_id_corso ON impegni(id_corso)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_sostituzioni_data ON sostituzioni(data_sostituzione)')
     
     # Inserisci istruttori di default
     istruttori_default = [

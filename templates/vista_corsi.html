@@ -11,6 +11,23 @@
     </div>
 </div>
 
+<!-- Barra Ricerca -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control" id="cercaCorso" 
+                   placeholder="Cerca per ID corso...">
+        </div>
+    </div>
+    <div class="col-md-3">
+        <input type="date" class="form-control" id="filtroDa" placeholder="Data da">
+    </div>
+    <div class="col-md-3">
+        <input type="date" class="form-control" id="filtroA" placeholder="Data a">
+    </div>
+</div>
+
 {% if corsi %}
 <div class="row">
     <div class="col-12">
@@ -97,6 +114,50 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function() {
+    // Ricerca real-time
+    $('#cercaCorso, #filtroDa, #filtroA').on('input change', function() {
+        applicaFiltriCorsi();
+    });
+});
+
+function applicaFiltriCorsi() {
+    const ricerca = $('#cercaCorso').val().toLowerCase();
+    const dataDa = $('#filtroDa').val();
+    const dataA = $('#filtroA').val();
+    
+    $('tbody tr').each(function() {
+        const row = $(this);
+        const idCorso = row.find('td:eq(0)').text().toLowerCase();
+        const periodo = row.find('td:eq(1)').text();
+        
+        let mostra = true;
+        
+        // Filtro ricerca ID corso
+        if (ricerca && !idCorso.includes(ricerca)) {
+            mostra = false;
+        }
+        
+        // Filtro data (semplificato - controlla solo se il testo periodo contiene)
+        if (dataDa || dataA) {
+            const match = periodo.match(/(\d{2}\.\d{2}\.\d{4})/g);
+            if (match && match.length >= 2) {
+                const inizio = match[0].split('.').reverse().join('-');
+                const fine = match[1].split('.').reverse().join('-');
+                
+                if (dataDa && fine < dataDa) mostra = false;
+                if (dataA && inizio > dataA) mostra = false;
+            }
+        }
+        
+        row.toggle(mostra);
+    });
+}
+</script>
 {% endblock %}
 <html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"><head>
 <!--[if gte mso 9]><xml>

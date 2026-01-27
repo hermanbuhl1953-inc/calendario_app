@@ -7,7 +7,7 @@ Calendario Istruttori - Flask App
 from flask import Flask, render_template, request, jsonify, send_file
 from datetime import datetime, timedelta
 import calendar as cal_module
-from database import get_db, calcola_data_fine, get_festivi_italiani, log_action, init_db
+from database import get_db, calcola_data_fine, get_festivi_italiani, get_festivi_completi, verifica_sovrapposizione, log_action, init_db
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -452,6 +452,11 @@ def report_giorni():
     
     return render_template('report_giorni.html', istruttori=istruttori, anni=anni)
 
+@app.route('/festivi')
+def gestione_festivi():
+    """Pagina gestione festività personalizzate"""
+    return render_template('festivi.html')
+
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
@@ -509,6 +514,21 @@ def api_create_impegno():
                 giorni_lavorativi,
                 giorni_extra if giorni_extra else None
             )
+        
+        # VALIDAZIONE SOVRAPPOSIZIONI
+        sovrapposizioni = verifica_sovrapposizione(
+            data['istruttore_id'],
+            data['data_inizio'],
+            data_fine
+        )
+        
+        if sovrapposizioni:
+            dettagli = [f"{s['attivita_nome']} ({s['data_inizio']} - {s['data_fine']})" for s in sovrapposizioni]
+            return jsonify({
+                'error': 'Sovrapposizione rilevata',
+                'conflitti': sovrapposizioni,
+                'messaggio': f"L'istruttore ha già impegni sovrapposti: {', '.join(dettagli)}"
+            }), 409
         
         conn = get_db()
         c = conn.cursor()
@@ -585,6 +605,22 @@ def api_update_impegno(impegno_id):
                 giorni_lavorativi,
                 giorni_extra if giorni_extra else None
             )
+        
+        # VALIDAZIONE SOVRAPPOSIZIONI (escluso impegno corrente)
+        sovrapposizioni = verifica_sovrapposizione(
+            data['istruttore_id'],
+            data['data_inizio'],
+            data_fine,
+            impegno_id_escluso=impegno_id
+        )
+        
+        if sovrapposizioni:
+            dettagli = [f"{s['attivita_nome']} ({s['data_inizio']} - {s['data_fine']})" for s in sovrapposizioni]
+            return jsonify({
+                'error': 'Sovrapposizione rilevata',
+                'conflitti': sovrapposizioni,
+                'messaggio': f"L'istruttore ha già impegni sovrapposti: {', '.join(dettagli)}"
+            }), 409
         
         conn = get_db()
         conn.execute('''
@@ -663,25 +699,26 @@ def api_calendario(anno):
 
 @app.route('/api/sovrapposizioni')
 def api_sovrapposizioni():
-    """Trova sovrapposizioni tra esami dello stesso istruttore"""
+    """Trova sovrapposizioni tra impegni dello stesso istruttore"""
     conn = get_db()
     
-    # Query per trovare sovrapposizioni
+    # Query migliorata per trovare tutte le sovrapposizioni
     sovrapposizioni = conn.execute('''
         SELECT 
             i1.id as id1, i2.id as id2,
             ist.nome as istruttore,
             ta1.nome as attivita1, i1.data_inizio as inizio1, i1.data_fine as fine1,
-            ta2.nome as attivita2, i2.data_inizio as inizio2, i2.data_fine as fine2
+            ta2.nome as attivita2, i2.data_inizio as inizio2, i2.data_fine as fine2,
+            ta1.categoria as categoria1, ta2.categoria as categoria2
         FROM impegni i1
         JOIN impegni i2 ON i1.istruttore_id = i2.istruttore_id AND i1.id < i2.id
         JOIN istruttori ist ON i1.istruttore_id = ist.id
         JOIN tipi_attivita ta1 ON i1.attivita_id = ta1.id
         JOIN tipi_attivita ta2 ON i2.attivita_id = ta2.id
         WHERE 
-            (ta1.categoria = 'ESAME' OR ta2.categoria = 'ESAME')
-            AND i1.data_inizio <= i2.data_fine 
+            i1.data_inizio <= i2.data_fine 
             AND i1.data_fine >= i2.data_inizio
+        ORDER BY ist.nome, i1.data_inizio
     ''').fetchall()
     
     conn.close()
@@ -976,6 +1013,26 @@ def api_create_sostituzione():
         if not (impegno['data_inizio'] <= data_sost <= impegno['data_fine']):
             return jsonify({'success': False, 'error': 'Data non nell\'intervallo dell\'impegno'}), 400
         
+        # VERIFICA DISPONIBILITÀ SOSTITUTO
+        # Controlla se il sostituto ha già impegni in quella data
+        conflitti_sostituto = conn.execute('''
+            SELECT i.*, ta.nome as attivita_nome
+            FROM impegni i
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE i.istruttore_id = ?
+            AND i.data_inizio <= ?
+            AND i.data_fine >= ?
+        ''', (data['istruttore_sostituto_id'], data_sost, data_sost)).fetchall()
+        
+        if conflitti_sostituto:
+            dettagli = [f"{c['attivita_nome']} ({c['data_inizio']} - {c['data_fine']})" for c in conflitti_sostituto]
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': 'Sostituto non disponibile',
+                'messaggio': f"L'istruttore sostituto ha già impegni: {', '.join(dettagli)}"
+            }), 409
+        
         c.execute('''
             INSERT INTO sostituzioni 
             (impegno_id, data_sostituzione, istruttore_originale_id, istruttore_sostituto_id, note)
@@ -1018,6 +1075,66 @@ def api_delete_sostituzione(sostituzione_id):
         f"Sostituzione {sostituzione_id} eliminata",
         request.headers.get('User-Agent', ''),
     )
+    
+    return jsonify({'success': True})
+
+# ============================================================================
+# API FESTIVI PERSONALIZZATI
+# ============================================================================
+
+@app.route('/api/festivi-custom', methods=['GET'])
+def api_get_festivi_custom():
+    """Ottieni lista festivi personalizzati"""
+    anno = request.args.get('anno')
+    
+    conn = get_db()
+    
+    if anno:
+        festivi = conn.execute(
+            'SELECT * FROM festivi_custom WHERE strftime("%Y", data) = ? ORDER BY data',
+            (anno,)
+        ).fetchall()
+    else:
+        festivi = conn.execute('SELECT * FROM festivi_custom ORDER BY data').fetchall()
+    
+    conn.close()
+    return jsonify([dict(f) for f in festivi])
+
+@app.route('/api/festivi-custom', methods=['POST'])
+def api_create_festivo_custom():
+    """Crea nuovo festivo personalizzato"""
+    data = request.json
+    
+    conn = get_db()
+    try:
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO festivi_custom (data, descrizione, tipo)
+            VALUES (?, ?, ?)
+        ''', (data['data'], data['descrizione'], data.get('tipo', 'AZIENDALE')))
+        
+        festivo_id = c.lastrowid
+        conn.commit()
+        conn.close()
+        
+        log_action("CREATE", f"Festivo custom {festivo_id} creato: {data['data']} - {data['descrizione']}", 
+                   request.headers.get('User-Agent', ''))
+        
+        return jsonify({'success': True, 'id': festivo_id})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/festivi-custom/<int:festivo_id>', methods=['DELETE'])
+def api_delete_festivo_custom(festivo_id):
+    """Elimina festivo personalizzato"""
+    conn = get_db()
+    conn.execute('DELETE FROM festivi_custom WHERE id = ?', (festivo_id,))
+    conn.commit()
+    conn.close()
+    
+    log_action("DELETE", f"Festivo custom {festivo_id} eliminato", 
+               request.headers.get('User-Agent', ''))
     
     return jsonify({'success': True})
 
