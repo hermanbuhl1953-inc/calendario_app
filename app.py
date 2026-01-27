@@ -572,20 +572,22 @@ def api_create_impegno():
                 giorni_extra if giorni_extra else None
             )
         
-        # VALIDAZIONE SOVRAPPOSIZIONI
-        sovrapposizioni = verifica_sovrapposizione(
-            data['istruttore_id'],
-            data['data_inizio'],
-            data_fine
-        )
-        
-        if sovrapposizioni:
-            dettagli = [f"{s['attivita_nome']} ({s['data_inizio']} - {s['data_fine']})" for s in sovrapposizioni]
-            return jsonify({
-                'error': 'Sovrapposizione rilevata',
-                'conflitti': sovrapposizioni,
-                'messaggio': f"L'istruttore ha già impegni sovrapposti: {', '.join(dettagli)}"
-            }), 409
+        # VALIDAZIONE SOVRAPPOSIZIONI (se non è forzato)
+        force = data.get('force', False)
+        if not force:
+            sovrapposizioni = verifica_sovrapposizione(
+                data['istruttore_id'],
+                data['data_inizio'],
+                data_fine
+            )
+            
+            if sovrapposizioni:
+                dettagli = [f"{s['attivita_nome']} ({s['data_inizio']} - {s['data_fine']})" for s in sovrapposizioni]
+                return jsonify({
+                    'error': 'Sovrapposizione rilevata',
+                    'conflitti': sovrapposizioni,
+                    'messaggio': f"L'istruttore ha già impegni sovrapposti: {', '.join(dettagli)}"
+                }), 409
         
         conn = get_db()
         c = conn.cursor()
@@ -663,21 +665,23 @@ def api_update_impegno(impegno_id):
                 giorni_extra if giorni_extra else None
             )
         
-        # VALIDAZIONE SOVRAPPOSIZIONI (escluso impegno corrente)
-        sovrapposizioni = verifica_sovrapposizione(
-            data['istruttore_id'],
-            data['data_inizio'],
-            data_fine,
-            impegno_id_escluso=impegno_id
-        )
-        
-        if sovrapposizioni:
-            dettagli = [f"{s['attivita_nome']} ({s['data_inizio']} - {s['data_fine']})" for s in sovrapposizioni]
-            return jsonify({
-                'error': 'Sovrapposizione rilevata',
-                'conflitti': sovrapposizioni,
-                'messaggio': f"L'istruttore ha già impegni sovrapposti: {', '.join(dettagli)}"
-            }), 409
+        # VALIDAZIONE SOVRAPPOSIZIONI (escluso impegno corrente, se non è forzato)
+        force = data.get('force', False)
+        if not force:
+            sovrapposizioni = verifica_sovrapposizione(
+                data['istruttore_id'],
+                data['data_inizio'],
+                data_fine,
+                impegno_id_escluso=impegno_id
+            )
+            
+            if sovrapposizioni:
+                dettagli = [f"{s['attivita_nome']} ({s['data_inizio']} - {s['data_fine']})" for s in sovrapposizioni]
+                return jsonify({
+                    'error': 'Sovrapposizione rilevata',
+                    'conflitti': sovrapposizioni,
+                    'messaggio': f"L'istruttore ha già impegni sovrapposti: {', '.join(dettagli)}"
+                }), 409
         
         conn = get_db()
         conn.execute('''

@@ -122,6 +122,9 @@
         <a href="/vista_corsi" class="btn btn-secondary mb-3">
             <i class="fas fa-arrow-left"></i> Torna a Vista Corsi
         </a>
+        <button class="btn btn-primary mb-3 ms-2" data-bs-toggle="modal" data-bs-target="#modalNuovoImpegno">
+            <i class="fas fa-plus"></i> Aggiungi Attività
+        </button>
     </div>
 </div>
 
@@ -270,6 +273,60 @@
         </div>
     </div>
     </div>
+
+<!-- Modal Nuovo Impegno -->
+<div class="modal fade" id="modalNuovoImpegno" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Aggiungi Attività al Corso</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuovoImpegno">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Istruttore *</label>
+                            <select class="form-select" id="nuovoIstruttoreId" required>
+                                <option value="">Seleziona...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Attività *</label>
+                            <select class="form-select" id="nuovoAttivitaId" required>
+                                <option value="">Seleziona...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Data Inizio *</label>
+                            <input type="date" class="form-control" id="nuovoDataInizio" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Giorni Lavorativi *</label>
+                            <input type="number" class="form-control" id="nuovoGiorniLav" min="1" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Data Fine (calcolata)</label>
+                            <input type="date" class="form-control" id="nuovoDataFine" disabled>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Note</label>
+                        <textarea class="form-control" id="nuovoNote" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="salvaNuovoImpegno()">
+                    <i class="fas fa-save"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -513,6 +570,136 @@ async function risolviConSpostamento(impegnoId) {
         location.reload();
     } catch (e) {
         alert('Errore di rete nello spostamento impegno');
+    }
+}
+
+// --- Nuovo Impegno Modal ---
+$(document).ready(function() {
+    caricaIstruttoriAttivita();
+    
+    // Auto-calcola data fine quando cambiano data inizio o giorni lavorativi
+    $('#nuovoDataInizio, #nuovoGiorniLav').on('change', function() {
+        calcolaDataFineNuovoImpegno();
+    });
+});
+
+async function caricaIstruttoriAttivita() {
+    try {
+        const [istruttoriRes, attivitaRes] = await Promise.all([
+            fetch('/api/istruttori'),
+            fetch('/api/tipi-attivita')
+        ]);
+        
+        if (istruttoriRes.ok) {
+            const istruttori = await istruttoriRes.json();
+            const select = $('#nuovoIstruttoreId');
+            istruttori.forEach(i => {
+                select.append(`<option value="${i.id}">${i.cognome} ${i.nome}</option>`);
+            });
+        }
+        
+        if (attivitaRes.ok) {
+            const attivita = await attivitaRes.json();
+            const select = $('#nuovoAttivitaId');
+            attivita.forEach(a => {
+                select.append(`<option value="${a.id}">${a.nome}</option>`);
+            });
+        }
+    } catch (e) {
+        console.error('Errore caricamento istruttori/attività:', e);
+    }
+}
+
+async function calcolaDataFineNuovoImpegno() {
+    const dataInizio = $('#nuovoDataInizio').val();
+    const giorniLav = parseInt($('#nuovoGiorniLav').val() || '0', 10);
+    
+    if (!dataInizio || !giorniLav) {
+        $('#nuovoDataFine').val('');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/calcola-data-fine', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data_inizio: dataInizio, giorni_lavorativi: giorniLav })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            $('#nuovoDataFine').val(data.data_fine);
+        }
+    } catch (e) {
+        console.error('Errore calcolo data fine:', e);
+    }
+}
+
+async function salvaNuovoImpegno() {
+    const istruttoreId = $('#nuovoIstruttoreId').val();
+    const attivitaId = $('#nuovoAttivitaId').val();
+    const dataInizio = $('#nuovoDataInizio').val();
+    const giorniLav = $('#nuovoGiorniLav').val();
+    const note = $('#nuovoNote').val();
+    
+    if (!istruttoreId || !attivitaId || !dataInizio || !giorniLav) {
+        alert('Compila tutti i campi obbligatori');
+        return;
+    }
+    
+    const body = {
+        istruttore_id: Number(istruttoreId),
+        attivita_id: Number(attivitaId),
+        data_inizio: dataInizio,
+        giorni_lavorativi: Number(giorniLav),
+        id_corso: {{ id_corso }},
+        note: note || ''
+    };
+    
+    try {
+        const res = await fetch('/api/impegni', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        
+        if (res.status === 409) {
+            // Sovrapposizione
+            const err = await res.json();
+            let msg = err.messaggio || 'Rilevata sovrapposizione.';
+            if (err.conflitti && err.conflitti.length > 0) {
+                msg += '\n\nConflitti rilevati:\n';
+                err.conflitti.forEach(c => {
+                    msg += `- ${c.istruttore} il ${formatData(c.data)}: ${c.attivita} (${formatData(c.data_inizio)} → ${formatData(c.data_fine)})\n`;
+                });
+            }
+            if (confirm(msg + '\n\nVuoi procedere comunque?')) {
+                body.force = true;
+                const retryRes = await fetch('/api/impegni', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (retryRes.ok) {
+                    new bootstrap.Modal($('#modalNuovoImpegno')).hide();
+                    location.reload();
+                } else {
+                    const retryErr = await retryRes.json().catch(() => ({}));
+                    alert(`Errore: ${retryRes.status} ${retryErr.error || ''}`);
+                }
+            }
+            return;
+        }
+        
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(`Errore: ${res.status} ${err.error || ''}`);
+            return;
+        }
+        
+        new bootstrap.Modal($('#modalNuovoImpegno')).hide();
+        location.reload();
+    } catch (e) {
+        alert('Errore di rete nel salvataggio impegno');
     }
 }
 </script>

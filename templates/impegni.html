@@ -470,9 +470,22 @@ function salvaImpegno() {
                     });
                 }
                 
-                if (confirm(msg + '\\n\\nVuoi procedere comunque? (sconsigliato)')) {
-                    // Qui potresti implementare un flag "force" per bypassare
-                    alert('Funzionalità non implementata. Modifica le date per evitare sovrapposizioni.');
+                if (confirm(msg + '\n\nVuoi procedere comunque?')) {
+                    // Riprova con flag force
+                    data.force = true;
+                    $.ajax({
+                        url: url,
+                        method: method,
+                        contentType: 'application/json',
+                        data: JSON.stringify(data),
+                        success: function() {
+                            alert('Impegno salvato (con sovrapposizione)!');
+                            location.reload();
+                        },
+                        error: function(xhr) {
+                            alert('Errore nel salvare: ' + (xhr.responseJSON?.error || 'Errore sconosciuto'));
+                        }
+                    });
                 }
             } else {
                 const errorMsg = xhr.responseJSON?.error || xhr.responseText || 'Errore sconosciuto';
