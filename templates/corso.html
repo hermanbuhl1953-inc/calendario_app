@@ -669,7 +669,7 @@ async function salvaNuovoImpegno() {
         attivita_id: Number(attivitaId),
         data_inizio: dataInizio,
         giorni_lavorativi: Number(giorniLav),
-        id_corso: {{ id_corso }},
+        id_corso: Number('{{ id_corso }}'),
         note: note || ''
     };
     
