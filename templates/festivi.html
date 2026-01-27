@@ -225,8 +225,22 @@ function eliminaFestivo(id) {
 }
 
 function formatData(dataStr) {
+    // Forza formato gg/mm/aaaa indipendentemente dal locale
+    if (!dataStr) return '';
+    const iso = String(dataStr).split('T')[0];
+    const parts = iso.split('-');
+    if (parts.length === 3) {
+        const [yyyy, mm, dd] = parts;
+        const d = dd.padStart(2, '0');
+        const m = mm.padStart(2, '0');
+        return `${d}/${m}/${yyyy}`;
+    }
+    // Fallback: tenta parsing e formatta
     const data = new Date(dataStr);
-    return data.toLocaleDateString('it-IT');
+    const d = String(data.getDate()).padStart(2, '0');
+    const m = String(data.getMonth() + 1).padStart(2, '0');
+    const y = String(data.getFullYear());
+    return `${d}/${m}/${y}`;
 }
 </script>
 {% endblock %}
