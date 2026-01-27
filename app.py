@@ -405,6 +405,17 @@ def vista_corsi():
     
     return render_template('vista_corsi.html', corsi=corsi)
 
+@app.route('/nuovo-corso')
+def nuovo_corso():
+    """Pagina wizard per creare un nuovo corso"""
+    return render_template('nuovo_corso.html')
+    
+    corsi = [dict(row) for row in corsi_raw]
+    
+    conn.close()
+    
+    return render_template('vista_corsi.html', corsi=corsi)
+
 @app.route('/istruttori')
 def gestione_istruttori():
     """Pagina gestione istruttori"""
@@ -1137,6 +1148,103 @@ def api_delete_festivo_custom(festivo_id):
                request.headers.get('User-Agent', ''))
     
     return jsonify({'success': True})
+
+# ============================================================================
+# API GESTIONE CORSI
+# ============================================================================
+
+@app.route('/api/corsi', methods=['POST'])
+def api_create_corso():
+    """Crea un nuovo corso con impegni associati"""
+    try:
+        data = request.json
+        
+        # Validazione
+        if not data.get('id_corso'):
+            return jsonify({'error': 'Manca id_corso'}), 400
+        if not data.get('data_inizio') or not data.get('data_fine'):
+            return jsonify({'error': 'Manca periodo corso'}), 400
+        if not data.get('istruttori') or len(data['istruttori']) == 0:
+            return jsonify({'error': 'Nessun istruttore selezionato'}), 400
+        if not data.get('attivita') or len(data['attivita']) == 0:
+            return jsonify({'error': 'Nessuna attività aggiunta'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Crea impegni per ogni attività
+        impegni_creati = []
+        for att in data['attivita']:
+            # Valida istruttore
+            ist = conn.execute('SELECT id FROM istruttori WHERE id = ?', 
+                              (att['istruttore_id'],)).fetchone()
+            if not ist:
+                conn.close()
+                return jsonify({'error': f"Istruttore {att['istruttore_id']} non trovato"}), 400
+            
+            # Valida attività
+            attivita = conn.execute(
+                'SELECT id FROM tipi_attivita WHERE nome = ?',
+                (att['attivita_nome'],)
+            ).fetchone()
+            
+            if not attivita:
+                conn.close()
+                return jsonify({'error': f"Attività '{att['attivita_nome']}' non trovata"}), 400
+            
+            # Calcola data fine
+            data_fine = calcola_data_fine(att['data_inizio'], att['giorni_lavorativi'])
+            
+            # Verifica sovrapposizioni
+            sovrapposizioni = verifica_sovrapposizione(
+                att['istruttore_id'],
+                att['data_inizio'],
+                data_fine
+            )
+            
+            if sovrapposizioni:
+                conn.close()
+                return jsonify({
+                    'error': 'Sovrapposizione rilevata',
+                    'messaggio': f"L'istruttore ha già impegni sovrapposti"
+                }), 409
+            
+            # Crea impegno
+            c.execute('''
+                INSERT INTO impegni
+                (id_corso, istruttore_id, attivita_id, data_inizio, giorni_lavorativi,
+                 data_fine, note)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                data['id_corso'],
+                att['istruttore_id'],
+                attivita['id'],
+                att['data_inizio'],
+                att['giorni_lavorativi'],
+                data_fine,
+                att.get('note', '')
+            ))
+            
+            impegni_creati.append(c.lastrowid)
+        
+        conn.commit()
+        conn.close()
+        
+        # Traccia creazione corso
+        log_action(
+            "CREATE",
+            f"Corso {data['id_corso']} creato con {len(impegni_creati)} impegni",
+            request.headers.get('User-Agent', '')
+        )
+        
+        return jsonify({
+            'success': True,
+            'id_corso': data['id_corso'],
+            'impegni_creati': len(impegni_creati)
+        })
+    
+    except Exception as e:
+        return jsonify({'error': f'Errore interno: {str(e)}'}), 500
 
 # ============================================================================
 # API REPORT GIORNI LAVORO

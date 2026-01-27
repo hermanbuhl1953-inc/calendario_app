@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+
+{% block title %}Nuovo Corso - Wizard - Calendario Istruttori{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-plus-circle"></i> Nuovo Corso - Wizard Creazione</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Indicatore Progresso -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="progress" style="height: 30px;">
+            <div class="progress-bar progress-bar-striped" id="progressBar" role="progressbar" 
+                 style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+                <span id="stepText">Step 1/4</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <!-- STEP 1: Dati Base -->
+                <div id="step1" class="step-content">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h4><i class="fas fa-file-alt"></i> Step 1: Dati Base Corso</h4>
+                            <hr>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">ID Corso * <small class="text-muted">(es. 01_25, CORSO_A)</small></label>
+                            <input type="text" class="form-control" id="corsoId" placeholder="01_25" required>
+                            <small class="text-danger d-none" id="erroreIdCorso"></small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo Corso *</label>
+                            <select class="form-select" id="corsoTipo" required>
+                                <option value="">Seleziona...</option>
+                                <option value="CORSO PDT-CT">CORSO PDT-CT</option>
+                                <option value="CORSO ADT">CORSO ADT</option>
+                                <option value="CORSO AMC">CORSO AMC</option>
+                                <option value="CORSO COMM.LE">CORSO COMM.LE</option>
+                                <option value="CUSTOM">Personalizzato</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Inizio Corso *</label>
+                            <input type="date" class="form-control" id="corsoDataInizio" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Fine Corso *</label>
+                            <input type="date" class="form-control" id="corsoDataFine" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Descrizione / Note</label>
+                        <textarea class="form-control" id="corsoNote" rows="3" 
+                                  placeholder="Es: Corso standard, preparazione 2026, etc."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Durata Calcolata:</strong> <span id="durataCorso">-</span> giorni
+                    </div>
+                </div>
+
+                <!-- STEP 2: Istruttori -->
+                <div id="step2" class="step-content d-none">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h4><i class="fas fa-users"></i> Step 2: Seleziona Istruttori</h4>
+                            <hr>
+                            <p class="text-muted">Seleziona gli istruttori che parteciperanno a questo corso</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="cercaIstruttore" 
+                               placeholder="Cerca istruttore...">
+                    </div>
+                    
+                    <div id="listaIstruttori" class="row">
+                        <!-- Popolato via JS -->
+                    </div>
+                    
+                    <div class="alert alert-warning mt-3">
+                        <strong>Istruttori Selezionati:</strong> 
+                        <div id="istruttoriSelezionati" class="mt-2">
+                            <small class="text-muted">Nessuno selezionato</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Attività e Timeline -->
+                <div id="step3" class="step-content d-none">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h4><i class="fas fa-tasks"></i> Step 3: Attività e Timeline</h4>
+                            <hr>
+                            <p class="text-muted">Crea gli impegni per il corso</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <button class="btn btn-primary btn-sm" onclick="aggiungiAttivita()">
+                            <i class="fas fa-plus"></i> Aggiungi Attività
+                        </button>
+                    </div>
+                    
+                    <div id="listaAttivita" class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Istruttore</th>
+                                    <th>Attività</th>
+                                    <th>Data Inizio</th>
+                                    <th>Giorni</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoAttivita">
+                                <tr class="text-center text-muted">
+                                    <td colspan="5">Nessuna attività aggiunta</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Riepilogo -->
+                <div id="step4" class="step-content d-none">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h4><i class="fas fa-check-circle"></i> Step 4: Riepilogo e Conferma</h4>
+                            <hr>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Dati Corso</h6>
+                                    <p class="mb-1"><strong>ID:</strong> <span id="riepilogoId">-</span></p>
+                                    <p class="mb-1"><strong>Tipo:</strong> <span id="riepilogoTipo">-</span></p>
+                                    <p class="mb-1"><strong>Periodo:</strong> <span id="riepilogoPeriodo">-</span></p>
+                                    <p class="mb-0"><strong>Durata:</strong> <span id="riepilogoDurata">-</span> giorni</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Partecipanti</h6>
+                                    <p class="mb-1"><strong>Istruttori:</strong> <span id="riepilogoIstruttori">0</span></p>
+                                    <p class="mb-1"><strong>Attività:</strong> <span id="riepilogoAttivita">0</span></p>
+                                    <p class="mb-0"><strong>Giorni Totali:</strong> <span id="riepilogoGiorni">0</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb"></i>
+                        Una volta creato il corso, potrai aggiungere altri impegni dalla pagina 
+                        <strong>"Gestione Impegni"</strong> se necessario.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottoni Navigazione -->
+            <div class="card-footer bg-light">
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-outline-secondary" id="btnIndietro" onclick="stepPrecedente()" style="display: none;">
+                        <i class="fas fa-chevron-left"></i> Indietro
+                    </button>
+                    <button class="btn btn-primary" id="btnAvanti" onclick="stepSuccessivo()">
+                        Avanti <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Info -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0"><i class="fas fa-lightbulb"></i> Suggerimenti</h6>
+            </div>
+            <div class="card-body small">
+                <p><strong>Step 1:</strong> Inserisci i dati base del corso</p>
+                <p><strong>Step 2:</strong> Scegli gli istruttori coinvolti</p>
+                <p><strong>Step 3:</strong> Aggiungi le attività (lezioni, esami, etc.)</p>
+                <p><strong>Step 4:</strong> Verifica e crea il corso</p>
+                <hr>
+                <p class="text-muted mb-0">💡 Puoi sempre modificare gli impegni in seguito dalla pagina Impegni.</p>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Attenzione</h6>
+            </div>
+            <div class="card-body small">
+                <p class="text-danger mb-1">⚠️ <strong>Verificare sovrapposizioni</strong></p>
+                <p class="text-muted mb-0">Il sistema controlla automaticamente se gli istruttori hanno già impegni nel periodo scelto.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi Attività -->
+<div class="modal fade" id="modalAttivita" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Aggiungi Attività</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Istruttore *</label>
+                    <select class="form-select" id="attIstruttore" required>
+                        <option value="">Seleziona...</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Tipo Attività *</label>
+                    <select class="form-select" id="attTipo" required>
+                        <option value="">Seleziona...</option>
+                        <option value="CORSO PDT-CT">CORSO PDT-CT</option>
+                        <option value="CORSO ADT">CORSO ADT</option>
+                        <option value="CORSO AMC">CORSO AMC</option>
+                        <option value="CORSO COMM.LE">CORSO COMM.LE</option>
+                        <option value="ESAME PDT-CT">ESAME PDT-CT</option>
+                        <option value="ESAME ADT">ESAME ADT</option>
+                        <option value="ESAME AMC">ESAME AMC</option>
+                        <option value="TIROCINIO">TIROCINIO</option>
+                        <option value="ADDESTRAMENTO">ADDESTRAMENTO</option>
+                    </select>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Data Inizio *</label>
+                        <input type="date" class="form-control" id="attDataInizio" required>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Giorni Lavorativi *</label>
+                        <input type="number" class="form-control" id="attGiorni" min="1" value="1" required>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Note</label>
+                    <textarea class="form-control" id="attNote" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="salvaAttivita()">Salva</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let stepCorrente = 1;
+let istruttoriSelezionati = [];
+let attivitaCorso = [];
+let tuttiIstruttori = [];
+let tutteAttivita = [];
+
+$(document).ready(function() {
+    // Carica istruttori
+    $.getJSON('/api/istruttori', function(data) {
+        tuttiIstruttori = data;
+        populaIstruttori();
+        // Popola select nel modal
+        data.forEach(ist => {
+            $('#attIstruttore').append(`<option value="${ist.id}">${ist.nome}</option>`);
+        });
+    });
+    
+    // Carica tipi attività
+    $.getJSON('/api/tipi-attivita', function(data) {
+        tutteAttivita = data;
+    });
+    
+    // Listeners
+    $('#corsoDataInizio, #corsoDataFine').on('change', calcolaDurataCorso);
+    $('#cercaIstruttore').on('input', filtraIstruttori);
+    $('#attDataInizio').attr('min', function() {
+        const dataInizio = $('#corsoDataInizio').val();
+        if (dataInizio) $(this).attr('min', dataInizio);
+        return '';
+    });
+});
+
+function calcolaDurataCorso() {
+    const inizio = $('#corsoDataInizio').val();
+    const fine = $('#corsoDataFine').val();
+    
+    if (inizio && fine) {
+        const d1 = new Date(inizio);
+        const d2 = new Date(fine);
+        const giorni = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+        $('#durataCorso').text(giorni);
+    }
+}
+
+function populaIstruttori() {
+    const lista = $('#listaIstruttori');
+    lista.empty();
+    
+    tuttiIstruttori.forEach(ist => {
+        const checked = istruttoriSelezionati.includes(ist.id) ? 'checked' : '';
+        const col = `
+            <div class="col-md-6 mb-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${ist.id}" 
+                           id="ist${ist.id}" ${checked} onchange="toggleIstruttore(${ist.id})">
+                    <label class="form-check-label" for="ist${ist.id}">
+                        ${ist.nome}
+                    </label>
+                </div>
+            </div>
+        `;
+        lista.append(col);
+    });
+}
+
+function filtraIstruttori() {
+    const ricerca = $('#cercaIstruttore').val().toLowerCase();
+    $('#listaIstruttori .form-check').each(function() {
+        const testo = $(this).text().toLowerCase();
+        $(this).closest('.col-md-6').toggle(testo.includes(ricerca));
+    });
+}
+
+function toggleIstruttore(id) {
+    const idx = istruttoriSelezionati.indexOf(id);
+    if (idx > -1) {
+        istruttoriSelezionati.splice(idx, 1);
+    } else {
+        istruttoriSelezionati.push(id);
+    }
+    aggiornaIstruttoriSelezionati();
+}
+
+function aggiornaIstruttoriSelezionati() {
+    const div = $('#istruttoriSelezionati');
+    
+    if (istruttoriSelezionati.length === 0) {
+        div.html('<small class="text-muted">Nessuno selezionato</small>');
+    } else {
+        let html = '<div class="d-flex flex-wrap gap-2">';
+        istruttoriSelezionati.forEach(id => {
+            const ist = tuttiIstruttori.find(i => i.id === id);
+            html += `
+                <span class="badge bg-info">
+                    ${ist.nome}
+                    <button type="button" class="btn-close btn-close-white ms-1" 
+                            onclick="toggleIstruttore(${id})" style="font-size: 0.6rem;"></button>
+                </span>
+            `;
+        });
+        html += '</div>';
+        div.html(html);
+    }
+}
+
+function aggiungiAttivita() {
+    if (istruttoriSelezionati.length === 0) {
+        alert('Seleziona almeno un istruttore!');
+        return;
+    }
+    
+    $('#attDataInizio').val('');
+    $('#attIstruttore').val('');
+    $('#attTipo').val('');
+    $('#attGiorni').val(1);
+    $('#attNote').val('');
+    
+    const modalAtt = new bootstrap.Modal($('#modalAttivita')[0]);
+    modalAtt.show();
+}
+
+function salvaAttivita() {
+    const istruttore = $('#attIstruttore').val();
+    const tipo = $('#attTipo').val();
+    const dataInizio = $('#attDataInizio').val();
+    const giorni = parseInt($('#attGiorni').val());
+    const note = $('#attNote').val();
+    
+    if (!istruttore || !tipo || !dataInizio || !giorni) {
+        alert('Compila tutti i campi obbligatori!');
+        return;
+    }
+    
+    const istNome = tuttiIstruttori.find(i => i.id == istruttore).nome;
+    
+    attivitaCorso.push({
+        istruttore_id: parseInt(istruttore),
+        istruttore_nome: istNome,
+        attivita_nome: tipo,
+        data_inizio: dataInizio,
+        giorni_lavorativi: giorni,
+        note: note
+    });
+    
+    renderAttivita();
+    bootstrap.Modal.getInstance($('#modalAttivita')[0]).hide();
+}
+
+function renderAttivita() {
+    const tbody = $('#corpoAttivita');
+    
+    if (attivitaCorso.length === 0) {
+        tbody.html('<tr class="text-center text-muted"><td colspan="5">Nessuna attività aggiunta</td></tr>');
+        return;
+    }
+    
+    tbody.empty();
+    attivitaCorso.forEach((att, idx) => {
+        const row = `
+            <tr>
+                <td>${att.istruttore_nome}</td>
+                <td>${att.attivita_nome}</td>
+                <td>${att.data_inizio}</td>
+                <td>${att.giorni_lavorativi}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="rimuoviAttivita(${idx})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+function rimuoviAttivita(idx) {
+    attivitaCorso.splice(idx, 1);
+    renderAttivita();
+}
+
+function stepSuccessivo() {
+    if (!validaStep(stepCorrente)) return;
+    
+    if (stepCorrente === 4) {
+        creaCorso();
+    } else {
+        stepCorrente++;
+        mostraStep();
+    }
+}
+
+function stepPrecedente() {
+    if (stepCorrente > 1) {
+        stepCorrente--;
+        mostraStep();
+    }
+}
+
+function mostraStep() {
+    // Nascondi tutti
+    $('.step-content').addClass('d-none');
+    
+    // Mostra step corrente
+    $(`#step${stepCorrente}`).removeClass('d-none');
+    
+    // Aggiorna progress bar
+    const percentage = (stepCorrente / 4) * 100;
+    $('#progressBar').css('width', percentage + '%').attr('aria-valuenow', percentage);
+    $('#stepText').text(`Step ${stepCorrente}/4`);
+    
+    // Aggiorna bottoni
+    $('#btnIndietro').toggle(stepCorrente > 1);
+    
+    if (stepCorrente === 4) {
+        $('#btnAvanti').text('Crea Corso ✓').removeClass('btn-primary').addClass('btn-success');
+        riepilogo();
+    } else {
+        $('#btnAvanti').text('Avanti ' + '→').removeClass('btn-success').addClass('btn-primary');
+    }
+}
+
+function validaStep(step) {
+    switch(step) {
+        case 1:
+            if (!$('#corsoId').val()) {
+                alert('Inserisci l\'ID Corso');
+                return false;
+            }
+            if (!$('#corsoTipo').val()) {
+                alert('Seleziona il tipo di corso');
+                return false;
+            }
+            if (!$('#corsoDataInizio').val()) {
+                alert('Inserisci la data di inizio');
+                return false;
+            }
+            if (!$('#corsoDataFine').val()) {
+                alert('Inserisci la data di fine');
+                return false;
+            }
+            return true;
+        case 2:
+            if (istruttoriSelezionati.length === 0) {
+                alert('Seleziona almeno un istruttore');
+                return false;
+            }
+            return true;
+        case 3:
+            if (attivitaCorso.length === 0) {
+                alert('Aggiungi almeno un\'attività');
+                return false;
+            }
+            return true;
+        default:
+            return true;
+    }
+}
+
+function riepilogo() {
+    $('#riepilogoId').text($('#corsoId').val());
+    $('#riepilogoTipo').text($('#corsoTipo').val());
+    
+    const inizio = $('#corsoDataInizio').val();
+    const fine = $('#corsoDataFine').val();
+    $('#riepilogoPeriodo').text(`${inizio} → ${fine}`);
+    
+    const d1 = new Date(inizio);
+    const d2 = new Date(fine);
+    const giorni = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+    $('#riepilogoDurata').text(giorni);
+    
+    $('#riepilogoIstruttori').text(istruttoriSelezionati.length);
+    $('#riepilogoAttivita').text(attivitaCorso.length);
+    
+    const giorniTot = attivitaCorso.reduce((sum, att) => sum + att.giorni_lavorativi, 0);
+    $('#riepilogoGiorni').text(giorniTot);
+}
+
+function creaCorso() {
+    if (!confirm('Creare il corso con i dati inseriti?')) return;
+    
+    const datiCorso = {
+        id_corso: $('#corsoId').val(),
+        tipo: $('#corsoTipo').val(),
+        data_inizio: $('#corsoDataInizio').val(),
+        data_fine: $('#corsoDataFine').val(),
+        note: $('#corsoNote').val(),
+        istruttori: istruttoriSelezionati,
+        attivita: attivitaCorso
+    };
+    
+    $.ajax({
+        url: '/api/corsi',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(datiCorso),
+        success: function(resp) {
+            alert('✅ Corso creato con successo!');
+            window.location.href = `/corso/${resp.id_corso}`;
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON?.error || 'Errore sconosciuto';
+            alert('❌ Errore: ' + error);
+        }
+    });
+}
+</script>
+{% endblock %}
