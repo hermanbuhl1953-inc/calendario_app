@@ -42,6 +42,31 @@ def giorni_lavorativi_tra(data_inizio, data_fine):
         current += timedelta(days=1)
     return giorni
 
+def aggiungi_giorni_lavorativi(data_inizio, giorni_da_aggiungere):
+    """Restituisce una nuova data aggiungendo N giorni lavorativi (lun-ven, esclusi festivi+custom)."""
+    if giorni_da_aggiungere <= 0:
+        return data_inizio
+    try:
+        corrente = datetime.strptime(data_inizio, '%Y-%m-%d')
+    except Exception:
+        return data_inizio
+    anno = corrente.year
+    festivi = set(get_festivi_completi(anno))
+
+    aggiunti = 0
+    while aggiunti < giorni_da_aggiungere:
+        corrente += timedelta(days=1)
+        # Aggiorna festivi se cambio anno
+        if corrente.year != anno:
+            anno = corrente.year
+            festivi = set(get_festivi_completi(anno))
+        data_str = corrente.strftime('%Y-%m-%d')
+        is_weekend = corrente.weekday() >= 5
+        is_festivo = data_str in festivi
+        if not is_weekend and not is_festivo:
+            aggiunti += 1
+    return corrente.strftime('%Y-%m-%d')
+
 # Nomi mesi in italiano
 MESI_ITALIANI = [
     '', 'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -687,6 +712,56 @@ def api_delete_impegno(impegno_id):
     )
     
     return jsonify({'success': True})
+
+@app.route('/api/impegni/<int:impegno_id>/shift', methods=['POST'])
+def api_shift_impegno(impegno_id):
+    """Sposta in avanti l'impegno di N giorni lavorativi e ricalcola data_fine.
+    Body: {"days": int}
+    """
+    try:
+        data = request.json or {}
+        days = int(data.get('days', 0))
+        if days <= 0:
+            return jsonify({'error': 'days deve essere > 0'}), 400
+
+        conn = get_db()
+        imp = conn.execute('''
+            SELECT id, istruttore_id, attivita_id, data_inizio, data_fine, giorni_lavorativi,
+                   giorno_extra_1, giorno_extra_2, giorno_extra_3, id_corso, note
+            FROM impegni WHERE id = ?
+        ''', (impegno_id,)).fetchone()
+        if not imp:
+            conn.close()
+            return jsonify({'error': 'Impegno non trovato'}), 404
+
+        nuova_data_inizio = aggiungi_giorni_lavorativi(imp['data_inizio'], days)
+
+        # Manteniamo i giorni_lavorativi e ricalcoliamo la data_fine con eventuali extra
+        giorni_extra = [imp['giorno_extra_1'], imp['giorno_extra_2'], imp['giorno_extra_3']]
+        nuova_data_fine = calcola_data_fine(nuova_data_inizio, int(imp['giorni_lavorativi']), giorni_extra)
+
+        # Validazione sovrapposizioni (escludendo l'impegno stesso)
+        conflitti = verifica_sovrapposizione(imp['istruttore_id'], nuova_data_inizio, nuova_data_fine, impegno_id_escluso=impegno_id)
+        if conflitti:
+            dettagli = [f"{c['attivita_nome']} ({c['data_inizio']} - {c['data_fine']})" for c in conflitti]
+            conn.close()
+            return jsonify({'error': 'Sovrapposizione rilevata', 'conflitti': conflitti, 'messaggio': ', '.join(dettagli)}), 409
+
+        conn.execute('''
+            UPDATE impegni SET data_inizio = ?, data_fine = ?, modificato_il = CURRENT_TIMESTAMP WHERE id = ?
+        ''', (nuova_data_inizio, nuova_data_fine, impegno_id))
+        conn.commit()
+        conn.close()
+
+        log_action(
+            "UPDATE",
+            f"Impegno {impegno_id} spostato di {days} giorni lavorativi (nuovo inizio {nuova_data_inizio}, fine {nuova_data_fine})",
+            request.headers.get('User-Agent', ''),
+        )
+
+        return jsonify({'success': True, 'data_inizio': nuova_data_inizio, 'data_fine': nuova_data_fine})
+    except Exception as e:
+        return jsonify({'error': f'Errore interno: {str(e)}'}), 500
 
 @app.route('/api/calendario/<int:anno>')
 def api_calendario(anno):
