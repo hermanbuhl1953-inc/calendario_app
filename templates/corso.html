@@ -339,6 +339,12 @@ const istruttoriUnici = {{ istruttori_unici|tojson }};
 
 $(document).ready(function() {
     popolaCalendarioCorso();
+    caricaIstruttoriAttivita();
+    
+    // Auto-calcola data fine quando cambiano data inizio o giorni lavorativi
+    $('#nuovoDataInizio, #nuovoGiorniLav').on('change', function() {
+        calcolaDataFineNuovoImpegno();
+    });
 });
 
 function popolaCalendarioCorso() {
@@ -574,15 +580,6 @@ async function risolviConSpostamento(impegnoId) {
 }
 
 // --- Nuovo Impegno Modal ---
-$(document).ready(function() {
-    caricaIstruttoriAttivita();
-    
-    // Auto-calcola data fine quando cambiano data inizio o giorni lavorativi
-    $('#nuovoDataInizio, #nuovoGiorniLav').on('change', function() {
-        calcolaDataFineNuovoImpegno();
-    });
-});
-
 async function caricaIstruttoriAttivita() {
     try {
         const [istruttoriRes, attivitaRes] = await Promise.all([
