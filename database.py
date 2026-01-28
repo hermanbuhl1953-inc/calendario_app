@@ -199,12 +199,81 @@ def init_db():
         )
     ''')
     
+    # Tabella Ruoli
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS ruoli (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL UNIQUE,
+            descrizione TEXT,
+            creato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Tabella Utenti
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS utenti (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            email TEXT,
+            nome TEXT,
+            cognome TEXT,
+            password_hash TEXT NOT NULL,
+            ruolo_id INTEGER NOT NULL,
+            attivo INTEGER DEFAULT 1,
+            creato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ultimo_accesso TIMESTAMP,
+            FOREIGN KEY (ruolo_id) REFERENCES ruoli(id)
+        )
+    ''')
+    
+    # Tabella Permessi Utente (granulari)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS permessi_utente (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            utente_id INTEGER NOT NULL,
+            risorsa TEXT NOT NULL,
+            azione TEXT NOT NULL,
+            creato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (utente_id) REFERENCES utenti(id),
+            UNIQUE(utente_id, risorsa, azione)
+        )
+    ''')
+    
+    # Tabella Audit Log
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            utente_id INTEGER,
+            azione TEXT NOT NULL,
+            tabella TEXT,
+            record_id INTEGER,
+            dettagli TEXT,
+            ip_address TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (utente_id) REFERENCES utenti(id)
+        )
+    ''')
+    
     # Indici per performance
     c.execute('CREATE INDEX IF NOT EXISTS idx_impegni_istruttore ON impegni(istruttore_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_impegni_data_inizio ON impegni(data_inizio)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_impegni_data_fine ON impegni(data_fine)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_impegni_id_corso ON impegni(id_corso)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_sostituzioni_data ON sostituzioni(data_sostituzione)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_audit_log_utente ON audit_log(utente_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_utenti_username ON utenti(username)')
+    
+    # Inserisci ruoli di default
+    ruoli_default = [
+        ("Admin", "Accesso totale, gestione utenti e permessi"),
+        ("Editor", "Può modificare impegni, corsi, attività"),
+        ("Viewer", "Accesso in sola lettura"),
+    ]
+    
+    for nome, descrizione in ruoli_default:
+        c.execute('INSERT OR IGNORE INTO ruoli (nome, descrizione) VALUES (?, ?)', 
+                  (nome, descrizione))
     
     # Inserisci istruttori di default
     istruttori_default = [
@@ -241,9 +310,29 @@ def init_db():
         c.execute('INSERT OR IGNORE INTO tipi_attivita (nome, colore, categoria) VALUES (?, ?, ?)', 
                   (nome, colore, categoria))
     
+    # Crea utente admin (3102011 / Qaqqa1234.)
+    # Importa bcrypt qui per evitare dipendenze globali
+    try:
+        import bcrypt
+        password_hash = bcrypt.hashpw(b'Qaqqa1234.', bcrypt.gensalt()).decode('utf-8')
+    except ImportError:
+        # Fallback se bcrypt non disponibile (per primi test)
+        password_hash = 'Qaqqa1234.'  # DA CAMBIARE IN PRODUZIONE
+    
+    # Ottieni ID ruolo Admin
+    c.execute("SELECT id FROM ruoli WHERE nome = 'Admin'")
+    ruolo_admin = c.fetchone()
+    if ruolo_admin:
+        ruolo_id = ruolo_admin['id']
+        c.execute('''
+            INSERT OR IGNORE INTO utenti (username, email, nome, cognome, password_hash, ruolo_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', ('3102011', '3102011@trenord.it', 'Admin', 'Calendario', password_hash, ruolo_id))
+    
     conn.commit()
     conn.close()
     print("✅ Database inizializzato con successo!")
+    print("✅ Utente admin creato: 3102011 / Qaqqa1234.")
 
 def get_db():
     """Ottieni connessione al database"""
@@ -344,6 +433,131 @@ def inserisci_dati_esempio():
     conn.commit()
     conn.close()
     print("✅ Dati di esempio inseriti!")
+
+
+# ==================== FUNZIONI AUTENTICAZIONE ====================
+
+def hash_password(password):
+    """Hash password con bcrypt"""
+    try:
+        import bcrypt
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    except ImportError:
+        # Fallback se bcrypt non disponibile
+        return password
+
+def verify_password(password, password_hash):
+    """Verifica password"""
+    try:
+        import bcrypt
+        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+    except ImportError:
+        # Fallback se bcrypt non disponibile
+        return password == password_hash
+
+def get_utente_by_username(username):
+    """Ottieni utente per username"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT u.*, r.nome as ruolo_nome 
+        FROM utenti u
+        LEFT JOIN ruoli r ON u.ruolo_id = r.id
+        WHERE u.username = ? AND u.attivo = 1
+    ''', (username,))
+    utente = c.fetchone()
+    conn.close()
+    return utente
+
+def get_utente_by_id(utente_id):
+    """Ottieni utente per ID"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT u.*, r.nome as ruolo_nome 
+        FROM utenti u
+        LEFT JOIN ruoli r ON u.ruolo_id = r.id
+        WHERE u.id = ? AND u.attivo = 1
+    ''', (utente_id,))
+    utente = c.fetchone()
+    conn.close()
+    return utente
+
+def crea_utente(username, email, nome, cognome, password, ruolo_nome='Viewer'):
+    """Crea nuovo utente"""
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Ottieni ID ruolo
+    c.execute('SELECT id FROM ruoli WHERE nome = ?', (ruolo_nome,))
+    ruolo = c.fetchone()
+    if not ruolo:
+        conn.close()
+        return {'errore': 'Ruolo non trovato'}
+    
+    try:
+        password_hash = hash_password(password)
+        c.execute('''
+            INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (username, email, nome, cognome, password_hash, ruolo['id']))
+        
+        conn.commit()
+        utente_id = c.lastrowid
+        conn.close()
+        return {'successo': True, 'utente_id': utente_id}
+    except sqlite3.IntegrityError:
+        conn.close()
+        return {'errore': 'Username già esistente'}
+
+def lista_utenti():
+    """Lista tutti gli utenti"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT u.id, u.username, u.email, u.nome, u.cognome, r.nome as ruolo, 
+               u.attivo, u.creato_il, u.ultimo_accesso
+        FROM utenti u
+        LEFT JOIN ruoli r ON u.ruolo_id = r.id
+        ORDER BY u.creato_il DESC
+    ''')
+    utenti = [dict(row) for row in c.fetchall()]
+    conn.close()
+    return utenti
+
+def aggiorna_ultimo_accesso(utente_id):
+    """Aggiorna timestamp ultimo accesso"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('UPDATE utenti SET ultimo_accesso = CURRENT_TIMESTAMP WHERE id = ?', (utente_id,))
+    conn.commit()
+    conn.close()
+
+def registra_audit(utente_id, azione, tabella=None, record_id=None, dettagli=None, ip_address=None):
+    """Registra azione audit log"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO audit_log (utente_id, azione, tabella, record_id, dettagli, ip_address)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (utente_id, azione, tabella, record_id, dettagli, ip_address))
+    conn.commit()
+    conn.close()
+
+def get_audit_log(limit=100):
+    """Ottieni audit log"""
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT a.*, u.username 
+        FROM audit_log a
+        LEFT JOIN utenti u ON a.utente_id = u.id
+        ORDER BY a.timestamp DESC
+        LIMIT ?
+    ''', (limit,))
+    log = [dict(row) for row in c.fetchall()]
+    conn.close()
+    return log
 
 if __name__ == '__main__':
     init_db()

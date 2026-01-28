@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Gestione Utenti{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1><i class="fas fa-users-cog"></i> Gestione Utenti</h1>
+            <p class="text-muted">Crea, modifica e gestisci gli accessi</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Form Nuovo Utente -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-plus"></i> Aggiungi Nuovo Utente</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formNuovoUtente">
+                        <div class="mb-3">
+                            <label class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="username" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email">
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nome</label>
+                                <input type="text" class="form-control" id="nome">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Cognome</label>
+                                <input type="text" class="form-control" id="cognome">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Ruolo *</label>
+                            <select class="form-select" id="ruolo" required>
+                                <option value="">Seleziona...</option>
+                                {% for ruolo in ruoli %}
+                                <option value="{{ ruolo.nome }}">{{ ruolo.nome }} - {{ ruolo.descrizione }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-save"></i> Crea Utente
+                        </button>
+                    </form>
+                    
+                    <div id="alertNuovoUtente" class="alert alert-info d-none mt-3"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lista Utenti -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Utenti Registrati</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Nome</th>
+                                    <th>Ruolo</th>
+                                    <th>Stato</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaUtenti">
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <i class="fas fa-spinner fa-spin"></i> Caricamento...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function() {
+    caricaUtenti();
+    
+    $('#formNuovoUtente').on('submit', function(e) {
+        e.preventDefault();
+        creaUtente();
+    });
+});
+
+function caricaUtenti() {
+    $.ajax({
+        url: '/api/utenti',
+        method: 'GET',
+        success: function(utenti) {
+            const tbody = $('#listaUtenti');
+            tbody.empty();
+            
+            if (utenti.length === 0) {
+                tbody.html('<tr><td colspan="6" class="text-center py-4">Nessun utente</td></tr>');
+                return;
+            }
+            
+            utenti.forEach(function(utente) {
+                const statoHtml = utente.attivo ? 
+                    '<span class="badge bg-success">Attivo</span>' :
+                    '<span class="badge bg-secondary">Disattivo</span>';
+                
+                const ultimoAccesso = utente.ultimo_accesso ? 
+                    new Date(utente.ultimo_accesso).toLocaleDateString('it-IT') :
+                    '<small class="text-muted">Mai</small>';
+                
+                const azioni = utente.attivo ?
+                    `<button class="btn btn-sm btn-warning" onclick="disattivaUtente(${utente.id})" title="Disattiva">
+                        <i class="fas fa-lock"></i>
+                    </button>` :
+                    `<button class="btn btn-sm btn-success" onclick="attivaUtente(${utente.id})" title="Attiva">
+                        <i class="fas fa-unlock"></i>
+                    </button>`;
+                
+                tbody.append(`
+                    <tr>
+                        <td><strong>${utente.username}</strong></td>
+                        <td><small>${utente.email || '-'}</small></td>
+                        <td>${utente.nome || '-'} ${utente.cognome || ''}</td>
+                        <td><span class="badge bg-info">${utente.ruolo || '-'}</span></td>
+                        <td>${statoHtml}</td>
+                        <td>${azioni}</td>
+                    </tr>
+                `);
+            });
+        },
+        error: function(err) {
+            alert('Errore nel caricamento utenti');
+        }
+    });
+}
+
+function creaUtente() {
+    const data = {
+        username: $('#username').val(),
+        email: $('#email').val(),
+        nome: $('#nome').val(),
+        cognome: $('#cognome').val(),
+        password: $('#password').val(),
+        ruolo: $('#ruolo').val()
+    };
+    
+    $.ajax({
+        url: '/api/utenti',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function(response) {
+            $('#formNuovoUtente')[0].reset();
+            const alert = $('#alertNuovoUtente');
+            alert.removeClass('d-none alert-danger').addClass('alert-success');
+            alert.html('<i class="fas fa-check"></i> Utente creato con successo!');
+            setTimeout(() => alert.addClass('d-none'), 3000);
+            caricaUtenti();
+        },
+        error: function(err) {
+            const resp = err.responseJSON || {};
+            const alert = $('#alertNuovoUtente');
+            alert.removeClass('d-none alert-success').addClass('alert-danger');
+            alert.html(`<i class="fas fa-times"></i> ${resp.errore || 'Errore nella creazione'}`);
+        }
+    });
+}
+
+function disattivaUtente(utente_id) {
+    if (!confirm('Disattivare questo utente?')) return;
+    
+    $.ajax({
+        url: `/api/utenti/${utente_id}/disattiva`,
+        method: 'POST',
+        success: function() {
+            caricaUtenti();
+        },
+        error: function(err) {
+            alert('Errore nella disattivazione');
+        }
+    });
+}
+
+function attivaUtente(utente_id) {
+    $.ajax({
+        url: `/api/utenti/${utente_id}/attiva`,
+        method: 'POST',
+        success: function() {
+            caricaUtenti();
+        },
+        error: function(err) {
+            alert('Errore nell\'attivazione');
+        }
+    });
+}
+</script>
+{% endblock %}

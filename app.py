@@ -4,23 +4,71 @@
 Calendario Istruttori - Flask App
 """
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for
 from datetime import datetime, timedelta
 import calendar as cal_module
-from database import get_db, calcola_data_fine, get_festivi_italiani, get_festivi_completi, verifica_sovrapposizione, log_action, init_db
+from database import (get_db, calcola_data_fine, get_festivi_italiani, get_festivi_completi, 
+                     verifica_sovrapposizione, log_action, init_db, hash_password, verify_password,
+                     get_utente_by_username, get_utente_by_id, crea_utente, lista_utenti, 
+                     aggiorna_ultimo_accesso, registra_audit, get_audit_log)
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import io
+from functools import wraps
+import os
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production-' + os.urandom(12).hex())
 
 # Initialize DB on startup (ensures tables exist on Render)
 try:
     init_db()
 except Exception as e:
     print(f"⚠️ init_db() error: {e}")
+
+
+# ==================== DECORATORI PROTEZIONE ====================
+
+def require_login(f):
+    """Decoratore: richiede login"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'utente_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def require_role(role_name):
+    """Decoratore: richiede ruolo specifico"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'utente_id' not in session:
+                return redirect(url_for('login'))
+            
+            utente = get_utente_by_id(session['utente_id'])
+            if not utente or utente['ruolo_nome'] != role_name:
+                return render_template('errore.html', 
+                    messaggio='Non hai permesso di accedere a questa pagina'), 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+def require_editor(f):
+    """Decoratore: richiede Editor o Admin"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'utente_id' not in session:
+            return redirect(url_for('login'))
+        
+        utente = get_utente_by_id(session['utente_id'])
+        if not utente or utente['ruolo_nome'] not in ['Admin', 'Editor']:
+            return render_template('errore.html',
+                messaggio='Solo Editor e Admin possono modificare'), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 @app.template_filter('itdate')
@@ -95,15 +143,49 @@ MESI_ITALIANI = [
 ]
 
 # ============================================================================
+# ROUTES AUTENTICAZIONE
+# ============================================================================
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Pagina login"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        
+        utente = get_utente_by_username(username)
+        if utente and verify_password(password, utente['password_hash']):
+            session['utente_id'] = utente['id']
+            session['username'] = utente['username']
+            session['ruolo'] = utente['ruolo_nome']
+            aggiorna_ultimo_accesso(utente['id'])
+            registra_audit(utente['id'], 'LOGIN', ip_address=request.remote_addr)
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', errore='Username o password errati')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """Logout"""
+    if 'utente_id' in session:
+        registra_audit(session.get('utente_id'), 'LOGOUT', ip_address=request.remote_addr)
+    session.clear()
+    return redirect(url_for('login'))
+
+# ============================================================================
 # ROUTES PAGINE
 # ============================================================================
 
 @app.route('/')
+@require_login
 def index():
     """Home page"""
-    return render_template('index.html')
+    return render_template('index.html', utente={'username': session.get('username'), 'ruolo': session.get('ruolo')})
 
 @app.route('/impegni')
+@require_login
 def impegni():
     """Pagina gestione impegni"""
     conn = get_db()
@@ -514,6 +596,29 @@ def gestione_festivi():
     """Pagina gestione festività personalizzate"""
     return render_template('festivi.html')
 
+@app.route('/admin/utenti')
+@require_role('Admin')
+def admin_utenti():
+    """Panel amministrazione utenti"""
+    utenti = lista_utenti()
+    conn = get_db()
+    ruoli = conn.execute('SELECT * FROM ruoli').fetchall()
+    conn.close()
+    return render_template('admin_users.html', utenti=utenti, ruoli=ruoli)
+
+@app.route('/admin/audit-log')
+@require_role('Admin')
+def admin_audit_log():
+    """Visualizza audit log"""
+    log = get_audit_log(500)
+    return render_template('audit_log.html', log=log)
+
+@app.route('/errore')
+def errore():
+    """Pagina errore generico"""
+    messaggio = request.args.get('messaggio', 'Errore sconosciuto')
+    return render_template('errore.html', messaggio=messaggio), 400
+
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
@@ -534,6 +639,7 @@ def api_get_impegni():
     return jsonify([dict(imp) for imp in impegni])
 
 @app.route('/api/impegni', methods=['POST'])
+@require_editor
 def api_create_impegno():
     """Crea nuovo impegno"""
     try:
@@ -1530,6 +1636,89 @@ def audit_log():
                 'error': 'Errore caricamento audit log',
                 'detail': str(e)
             }), 500
+
+# ============================================================================
+# API ADMIN - GESTIONE UTENTI
+# ============================================================================
+
+@app.route('/api/utenti', methods=['GET'])
+@require_role('Admin')
+def api_lista_utenti():
+    """Lista tutti gli utenti"""
+    utenti = lista_utenti()
+    return jsonify(utenti)
+
+@app.route('/api/utenti', methods=['POST'])
+@require_role('Admin')
+def api_crea_utente():
+    """Crea nuovo utente"""
+    try:
+        data = request.json
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        nome = data.get('nome', '').strip()
+        cognome = data.get('cognome', '').strip()
+        password = data.get('password', '')
+        ruolo = data.get('ruolo', 'Viewer')
+        
+        if not username or not password or not ruolo:
+            return jsonify({'errore': 'Campi obbligatori mancanti'}), 400
+        
+        result = crea_utente(username, email, nome, cognome, password, ruolo)
+        if 'errore' in result:
+            return jsonify(result), 400
+        
+        registra_audit(session.get('utente_id'), 'CREA_UTENTE', 'utenti', result['utente_id'],
+                      f'Username: {username}, Ruolo: {ruolo}', request.remote_addr)
+        
+        return jsonify({'successo': True, 'utente_id': result['utente_id']})
+    except Exception as e:
+        return jsonify({'errore': str(e)}), 500
+
+@app.route('/api/utenti/<int:utente_id>/disattiva', methods=['POST'])
+@require_role('Admin')
+def api_disattiva_utente(utente_id):
+    """Disattiva utente"""
+    try:
+        if utente_id == session.get('utente_id'):
+            return jsonify({'errore': 'Non puoi disattivare il tuo account'}), 400
+        
+        conn = get_db()
+        conn.execute('UPDATE utenti SET attivo = 0 WHERE id = ?', (utente_id,))
+        conn.commit()
+        conn.close()
+        
+        registra_audit(session.get('utente_id'), 'DISATTIVA_UTENTE', 'utenti', utente_id,
+                      f'Utente disattivato', request.remote_addr)
+        
+        return jsonify({'successo': True})
+    except Exception as e:
+        return jsonify({'errore': str(e)}), 500
+
+@app.route('/api/utenti/<int:utente_id>/attiva', methods=['POST'])
+@require_role('Admin')
+def api_attiva_utente(utente_id):
+    """Attiva utente"""
+    try:
+        conn = get_db()
+        conn.execute('UPDATE utenti SET attivo = 1 WHERE id = ?', (utente_id,))
+        conn.commit()
+        conn.close()
+        
+        registra_audit(session.get('utente_id'), 'ATTIVA_UTENTE', 'utenti', utente_id,
+                      f'Utente attivato', request.remote_addr)
+        
+        return jsonify({'successo': True})
+    except Exception as e:
+        return jsonify({'errore': str(e)}), 500
+
+@app.route('/api/audit-log', methods=['GET'])
+@require_role('Admin')
+def api_get_audit_log():
+    """Ottieni audit log"""
+    limit = request.args.get('limit', 500, type=int)
+    log = get_audit_log(limit)
+    return jsonify(log)
 
 # ============================================================================
 # MAIN

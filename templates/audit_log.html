@@ -1,154 +1,163 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audit Log - Calendario Istruttori</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            text-decoration: none;
-            margin-bottom: 20px;
-        }
-        
-        .btn:hover {
-            background: #5568d3;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        
-        th {
-            background: #f0f0f0;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            color: #333;
-            border-bottom: 2px solid #ddd;
-        }
-        
-        td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        tr:hover {
-            background: #fafafa;
-        }
-        
-        .action {
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 3px;
-            display: inline-block;
-            font-size: 12px;
-        }
-        
-        .action.CREATE {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .action.UPDATE {
-            background: #cfe2ff;
-            color: #084298;
-        }
-        
-        .action.DELETE {
-            background: #f8d7da;
-            color: #842029;
-        }
-        
-        .timestamp {
-            color: #999;
-            font-size: 12px;
-        }
-        
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>📋 Audit Log</h1>
-        <p class="subtitle">Elenco di tutte le azioni effettuate nel sistema</p>
-        
-        <a href="/" class="btn">← Torna al Calendario</a>
-        
-        {% if logs %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Timestamp</th>
-                        <th>Azione</th>
-                        <th>Descrizione</th>
-                        <th>User Agent</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for log in logs %}
-                        <tr>
-                            <td class="timestamp">{{ log.timestamp }}</td>
-                            <td>
-                                <span class="action {{ log.action }}">
-                                    {{ log.action }}
-                                </span>
-                            </td>
-                            <td>{{ log.description }}</td>
-                            <td style="font-size: 11px; color: #999;">{{ log.user_agent[:50] if log.user_agent else 'N/A' }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <div class="no-data">
-                <p>Nessun log disponibile</p>
-            </div>
-        {% endif %}
+{% extends "base.html" %}
+
+{% block title %}Admin - Audit Log{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1><i class="fas fa-history"></i> Audit Log</h1>
+            <p class="text-muted">Cronologia di tutte le azioni nel sistema</p>
+        </div>
     </div>
-</body>
-</html>
+    
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <div class="row">
+                <div class="col-md-8">
+                    <h5 class="mb-0"><i class="fas fa-list-ul"></i> Log Attività</h5>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm" id="filtroRicerca" 
+                           placeholder="Filtra per username o azione...">
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Data/Ora</th>
+                            <th>Utente</th>
+                            <th>Azione</th>
+                            <th>Tabella</th>
+                            <th>Record ID</th>
+                            <th>Dettagli</th>
+                            <th>IP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditLogBody">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="fas fa-spinner fa-spin"></i> Caricamento...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-hover tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+.badge {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+}
+
+.action-badge {
+    font-weight: 600;
+}
+
+.action-create { background-color: #d4edda; color: #155724; }
+.action-update { background-color: #cfe2ff; color: #084298; }
+.action-delete { background-color: #f8d7da; color: #842029; }
+.action-login { background-color: #d1ecf1; color: #0c5460; }
+.action-logout { background-color: #e2e3e5; color: #383d41; }
+</style>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function() {
+    caricaAuditLog();
+    
+    $('#filtroRicerca').on('keyup', function() {
+        filtroAuditLog($(this).val());
+    });
+});
+
+function caricaAuditLog() {
+    $.ajax({
+        url: '/api/audit-log?limit=1000',
+        method: 'GET',
+        success: function(log) {
+            renderAuditLog(log);
+        },
+        error: function(err) {
+            alert('Errore nel caricamento dell\'audit log');
+        }
+    });
+}
+
+function renderAuditLog(log) {
+    const tbody = $('#auditLogBody');
+    tbody.empty();
+    
+    if (log.length === 0) {
+        tbody.html('<tr><td colspan="7" class="text-center py-4">Nessun log disponibile</td></tr>');
+        return;
+    }
+    
+    log.forEach(function(entry) {
+        const data = new Date(entry.timestamp);
+        const dataFormattata = data.toLocaleDateString('it-IT') + ' ' + 
+                               data.toLocaleTimeString('it-IT');
+        
+        const actionClass = getActionBadgeClass(entry.azione);
+        const tabellaHtml = entry.tabella ? `<code class="text-dark">${entry.tabella}</code>` : '-';
+        const recordIdHtml = entry.record_id ? `<code class="text-dark">${entry.record_id}</code>` : '-';
+        const ipHtml = entry.ip_address ? `<small>${entry.ip_address}</small>` : '-';
+        
+        tbody.append(`
+            <tr class="audit-row" data-filter="${entry.username || ''} ${entry.azione}">
+                <td>
+                    <small class="text-muted">${dataFormattata}</small>
+                </td>
+                <td>
+                    <strong>${entry.username || 'Sistema'}</strong>
+                </td>
+                <td>
+                    <span class="badge ${actionClass}">${entry.azione}</span>
+                </td>
+                <td>${tabellaHtml}</td>
+                <td>${recordIdHtml}</td>
+                <td>
+                    <small class="text-muted">${entry.dettagli || '-'}</small>
+                </td>
+                <td>${ipHtml}</td>
+            </tr>
+        `);
+    });
+}
+
+function getActionBadgeClass(azione) {
+    const azione_upper = azione.toUpperCase();
+    if (azione_upper.includes('CREATE') || azione_upper === 'CREA_UTENTE') return 'action-create';
+    if (azione_upper.includes('UPDATE') || azione_upper.includes('MODIFICA')) return 'action-update';
+    if (azione_upper.includes('DELETE') || azione_upper.includes('DISATTIVA')) return 'action-delete';
+    if (azione_upper === 'LOGIN') return 'action-login';
+    if (azione_upper === 'LOGOUT') return 'action-logout';
+    return 'bg-secondary';
+}
+
+function filtroAuditLog(filtro) {
+    const filtro_lower = filtro.toLowerCase();
+    
+    $('#auditLogBody tr.audit-row').each(function() {
+        const testo = $(this).attr('data-filter').toLowerCase();
+        if (testo.includes(filtro_lower)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+        }
+    });
+}
+</script>
+{% endblock %}
