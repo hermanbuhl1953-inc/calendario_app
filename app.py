@@ -191,22 +191,38 @@ def setup_admin():
         from database import init_db
         init_db()
         
-        # Verifica se admin esiste già
         conn = get_db()
+        
+        # 1. Assicurati che i ruoli existono
+        ruoli_default = [
+            ("Admin", "Accesso totale, gestione utenti e permessi"),
+            ("Editor", "Può modificare impegni, corsi, attività"),
+            ("Viewer", "Accesso in sola lettura"),
+        ]
+        
+        for nome, descrizione in ruoli_default:
+            conn.execute('INSERT OR IGNORE INTO ruoli (nome, descrizione) VALUES (?, ?)', 
+                        (nome, descrizione))
+        conn.commit()
+        
+        # 2. Prendi ID ruolo Admin
+        ruolo_admin = conn.execute("SELECT id FROM ruoli WHERE nome = 'Admin'").fetchone()
+        
+        if not ruolo_admin:
+            raise Exception("Impossibile trovare il ruolo Admin")
+        
+        ruolo_id = ruolo_admin['id']
+        
+        # 3. Verifica se admin esiste già
         existing = conn.execute("SELECT * FROM utenti WHERE username = '3102011'").fetchone()
         
         if not existing:
-            # Crea admin
-            conn.execute("SELECT id FROM ruoli WHERE nome = 'Admin'")
-            ruolo_admin = conn.fetchone()
-            
-            if ruolo_admin:
-                # Password in chiaro per ora (bcrypt potrebbe non essere disponibile)
-                conn.execute('''
-                    INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', ('3102011', '3102011@trenord.it', 'Admin', 'Calendario', 'Qaqqa1234.', ruolo_admin['id']))
-                conn.commit()
+            # Crea admin - Password in chiaro (bcrypt potrebbe non funzionare)
+            conn.execute('''
+                INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id, attivo)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('3102011', '3102011@trenord.it', 'Admin', 'Calendario', 'Qaqqa1234.', ruolo_id, 1))
+            conn.commit()
         
         conn.close()
         
@@ -219,19 +235,26 @@ def setup_admin():
             <p><strong>Password:</strong> Qaqqa1234.</p>
             <br>
             <a href="/login" style="background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                Vai al Login
+                Vai al Login →
             </a>
         </body>
         </html>
         '''
     except Exception as e:
+        import traceback
         return f'''
         <html>
-        <body style="font-family: Arial; text-align: center; padding: 50px;">
+        <body style="font-family: Arial; padding: 50px;">
             <h1 style="color: red;">❌ Errore Setup</h1>
-            <p>{str(e)}</p>
+            <p><strong>Errore:</strong> {str(e)}</p>
+            <pre style="background: #eee; padding: 10px; overflow-x: auto;">{traceback.format_exc()}</pre>
             <br>
-            <a href="/login">Torna al Login</a>
+            <a href="/debug-db" style="background: #ffc107; color: black; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                Vedi Diagnostica
+            </a>
+            <a href="/login" style="background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">
+                Torna al Login
+            </a>
         </body>
         </html>
         ''', 500
