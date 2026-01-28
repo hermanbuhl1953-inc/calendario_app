@@ -236,6 +236,98 @@ def setup_admin():
         </html>
         ''', 500
 
+@app.route('/debug-db')
+def debug_db():
+    """Diagnostica database"""
+    try:
+        import os
+        conn = get_db()
+        
+        # Lista tabelle
+        tabelle = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        tabelle_list = [t['name'] for t in tabelle]
+        
+        # Conta utenti
+        try:
+            utenti_count = conn.execute("SELECT COUNT(*) as cnt FROM utenti").fetchone()
+            utenti_count = utenti_count['cnt'] if utenti_count else 0
+        except:
+            utenti_count = "Tabella non esiste"
+        
+        # Conta ruoli
+        try:
+            ruoli_count = conn.execute("SELECT COUNT(*) as cnt FROM ruoli").fetchone()
+            ruoli_count = ruoli_count['cnt'] if ruoli_count else 0
+        except:
+            ruoli_count = "Tabella non esiste"
+        
+        # Prova a recuperare utente admin
+        try:
+            admin_user = conn.execute("SELECT * FROM utenti WHERE username = '3102011'").fetchone()
+            admin_info = dict(admin_user) if admin_user else "Non trovato"
+        except Exception as e:
+            admin_info = f"Errore: {e}"
+        
+        conn.close()
+        
+        # DB path
+        db_path = os.path.abspath('calendario.db')
+        db_exists = os.path.exists(db_path)
+        
+        return f'''
+        <html>
+        <head><style>
+            body {{ font-family: monospace; padding: 20px; background: #f5f5f5; }}
+            .box {{ background: white; padding: 20px; margin: 10px 0; border-radius: 5px; }}
+            .ok {{ color: green; }}
+            .error {{ color: red; }}
+            pre {{ background: #eee; padding: 10px; overflow-x: auto; }}
+        </style></head>
+        <body>
+            <h1>🔍 Diagnostica Database</h1>
+            
+            <div class="box">
+                <h3>Database File</h3>
+                <p><strong>Path:</strong> {db_path}</p>
+                <p><strong>Esiste:</strong> <span class="{'ok' if db_exists else 'error'}">{db_exists}</span></p>
+            </div>
+            
+            <div class="box">
+                <h3>Tabelle Presenti</h3>
+                <pre>{tabelle_list}</pre>
+            </div>
+            
+            <div class="box">
+                <h3>Conteggi</h3>
+                <p><strong>Utenti:</strong> {utenti_count}</p>
+                <p><strong>Ruoli:</strong> {ruoli_count}</p>
+            </div>
+            
+            <div class="box">
+                <h3>Utente Admin (3102011)</h3>
+                <pre>{admin_info}</pre>
+            </div>
+            
+            <br>
+            <a href="/setup-admin" style="background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                Forza Setup
+            </a>
+            <a href="/login" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">
+                Prova Login
+            </a>
+        </body>
+        </html>
+        '''
+    except Exception as e:
+        return f'''
+        <html>
+        <body style="font-family: Arial; padding: 50px;">
+            <h1 style="color: red;">❌ Errore Debug</h1>
+            <pre>{str(e)}</pre>
+        </body>
+        </html>
+        ''', 500
+
 # ============================================================================
 # ROUTES PAGINE
 # ============================================================================
