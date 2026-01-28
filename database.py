@@ -117,7 +117,8 @@ def calcola_pasqua(anno):
 
 def init_db():
     """Inizializza il database con tabelle e dati iniziali"""
-    conn = sqlite3.connect('calendario.db')
+    db_path = os.environ.get('DB_PATH', 'calendario.db')
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
 
     # Tabella Istruttori
@@ -325,7 +326,8 @@ def init_db():
 
 def get_db():
     """Ottieni connessione al database"""
-    conn = sqlite3.connect('calendario.db')
+    db_path = os.environ.get('DB_PATH', 'calendario.db')
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row  # Per accedere alle colonne per nome
     return conn
 
