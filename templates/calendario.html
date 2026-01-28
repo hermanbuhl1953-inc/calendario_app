@@ -39,12 +39,12 @@
 }
 
 .cella-weekend {
-    background-color: #f0f0f0 !important;
+    background-color: #e8e8e8 !important;
 }
 
 .cella-festivo {
-    background-color: #e8e8e8 !important;
-    opacity: 0.8;
+    background-color: #d0d0d0 !important;
+    opacity: 0.9;
 }
 
 /* Scala di blu per i mesi */
@@ -159,8 +159,8 @@
                     <!-- Riga giorni -->
                     <tr>
                         {% for mese in mesi %}
-                            {% for giorno in range(1, mese.giorni + 1) %}
-                            <th>{{ giorno }}</th>
+                            {% for giorno_mese in range(1, mese.giorni + 1) %}
+                            <th class="day-header" data-mese="{{ mese.numero }}" data-giorno-mese="{{ giorno_mese }}">{{ giorno_mese }}</th>
                             {% endfor %}
                         {% endfor %}
                     </tr>
@@ -264,39 +264,53 @@ $(document).ready(function() {
 });
 
 function coloraWeekend() {
-    // Colora intestazioni e celle weekend (Sabato=6, Domenica=0)
+    // Crea mappa data -> giorno della settimana
     const inizioAnno = new Date(anno, 0, 1);
-    for (let giorno = 1; giorno <= {{ num_giorni }}; giorno++) {
-        const data = new Date(inizioAnno.getTime() + (giorno - 1) * 24 * 60 * 60 * 1000);
-        const weekday = data.getDay(); // 0=Domenica, 1=Lunedì, 6=Sabato
+    const dayMap = {}; // dataStr -> weekday
+    
+    for (let g = 1; g <= {{ num_giorni }}; g++) {
+        const data = new Date(inizioAnno.getTime() + (g - 1) * 24 * 60 * 60 * 1000);
         const dataStr = data.toISOString().split('T')[0];
+        const weekday = data.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+        dayMap[dataStr] = weekday;
+    }
+    
+    // Colora gli header dei giorni (numeri nel calendario)
+    $('.day-header').each(function() {
+        const mese = parseInt($(this).data('mese'));
+        const giornoMese = parseInt($(this).data('giorno-mese'));
         
-        // Controlla se è weekend (Sabato=6 OPPURE Domenica=0)
+        // Ricostruisci la data
+        const dataStr = anno + '-' + String(mese).padStart(2, '0') + '-' + String(giornoMese).padStart(2, '0');
+        const weekday = dayMap[dataStr];
+        
+        if (weekday === 6) {
+            // SABATO = GIALLO
+            $(this).css('background-color', '#FFD700 !important');
+            $(this).css('color', '#000');
+        } else if (weekday === 0) {
+            // DOMENICA = ROSSO
+            $(this).css('background-color', '#FF6B6B !important');
+            $(this).css('color', '#fff');
+        }
+    });
+    
+    // Colora le celle
+    for (let g = 1; g <= {{ num_giorni }}; g++) {
+        const data = new Date(inizioAnno.getTime() + (g - 1) * 24 * 60 * 60 * 1000);
+        const dataStr = data.toISOString().split('T')[0];
+        const weekday = data.getDay();
+        
         const isWeekend = weekday === 0 || weekday === 6;
-        
-        // Controlla se è festivo
         const isFestivo = festivi.includes(dataStr);
         
-        if (isWeekend) {
-            // Colora header giorno come weekend
-            const headerCells = $('.calendario-table thead tr:eq(1) th');
-            if (headerCells[giorno]) {
-                $(headerCells[giorno]).addClass('weekend-header');
-            }
-        }
-        
         // Colora tutte le celle di questo giorno
-        $(`.cella-giorno[id$="-${giorno}"]`).each(function() {
-            if (isWeekend) {
+        $(`.cella-giorno[id$="-${g}"]`).each(function() {
+            if (isFestivo || isWeekend) {
                 $(this).addClass('cella-weekend');
-            }
-            if (isFestivo && !$(this).hasClass('cella-vuota')) {
-                // Se c'è un impegno festivo, aggiungi classe festivo (più scuro del weekend)
-                $(this).addClass('cella-festivo');
-            } else if (isFestivo) {
-                // Se è festivo ma vuoto, comunque coloralo
-                $(this).addClass('cella-weekend');
-                $(this).addClass('cella-festivo');
+                if (isFestivo) {
+                    $(this).addClass('cella-festivo');
+                }
             }
         });
     }
