@@ -35,6 +35,22 @@ def require_login(f):
     """Decoratore: richiede login"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Controlla se database auth è inizializzato
+        try:
+            conn = get_db()
+            utenti_count = conn.execute("SELECT COUNT(*) as cnt FROM utenti").fetchone()['cnt']
+            conn.close()
+            
+            if utenti_count == 0:
+                # Database non inizializzato, redirect a setup
+                return redirect(url_for('setup_admin'))
+        except Exception as e:
+            # Errore lettura database - probabilmente tabelle non esistono
+            # Redirect a setup per inizializzare
+            print(f"⚠️ Database check error: {e}")
+            return redirect(url_for('setup_admin'))
+        
+        # Database ok, controlla sessione
         if 'utente_id' not in session:
             return redirect(url_for('login'))
         return f(*args, **kwargs)
@@ -185,14 +201,13 @@ def logout():
 
 @app.route('/setup-admin')
 def setup_admin():
-    """Setup iniziale - crea database e admin"""
+    """Setup iniziale - crea database e admin - NON PROTETTO"""
     try:
+        # Drop tabelle di auth vecchie (potrebbero avere struttura diversa)
         conn = get_db()
         c = conn.cursor()
         
-        # 1. Drop tabelle di auth (sono state create prima con struttura diversa)
-        # e ricreale con la struttura corretta
-        for table in ['audit_log', 'permessi_utente', 'utenti', 'ruoli']:
+        for table in ['permessi_utente', 'utenti', 'audit_log', 'ruoli']:
             try:
                 c.execute(f'DROP TABLE IF EXISTS {table}')
             except:
@@ -201,13 +216,14 @@ def setup_admin():
         conn.commit()
         conn.close()
         
-        # 2. Ora chiama init_db per ricreate tutto con struttura corretta
+        # Ricrea tabelle con init_db
         from database import init_db
         init_db()
         
+        # Connetti di nuovo e inserisci dati
         conn = get_db()
         
-        # 3. Assicurati che i ruoli existono
+        # Ruoli
         ruoli_default = [
             ("Admin", "Accesso totale, gestione utenti e permessi"),
             ("Editor", "Può modificare impegni, corsi, attività"),
@@ -219,19 +235,16 @@ def setup_admin():
                         (nome, descrizione))
         conn.commit()
         
-        # 4. Prendi ID ruolo Admin
+        # Prendi ID Admin
         ruolo_admin = conn.execute("SELECT id FROM ruoli WHERE nome = 'Admin'").fetchone()
-        
         if not ruolo_admin:
-            raise Exception("Impossibile trovare il ruolo Admin")
+            raise Exception("Impossibile trovare ruolo Admin")
         
         ruolo_id = ruolo_admin['id']
         
-        # 5. Verifica se admin esiste già
+        # Crea admin se non esiste
         existing = conn.execute("SELECT * FROM utenti WHERE username = '3102011'").fetchone()
-        
         if not existing:
-            # Crea admin - Password in chiaro
             conn.execute('''
                 INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id, attivo)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -244,7 +257,7 @@ def setup_admin():
         <html>
         <body style="font-family: Arial; text-align: center; padding: 50px;">
             <h1 style="color: green;">✅ Setup Completato!</h1>
-            <p>Database migrato e inizializzato con successo</p>
+            <p>Database inizializzato con successo</p>
             <p><strong>Username:</strong> 3102011</p>
             <p><strong>Password:</strong> Qaqqa1234.</p>
             <br>
@@ -261,13 +274,10 @@ def setup_admin():
         <body style="font-family: Arial; padding: 50px;">
             <h1 style="color: red;">❌ Errore Setup</h1>
             <p><strong>Errore:</strong> {str(e)}</p>
-            <pre style="background: #eee; padding: 10px; overflow-x: auto;">{traceback.format_exc()}</pre>
+            <pre style="background: #eee; padding: 10px; overflow-x: auto; font-size: 12px;">{traceback.format_exc()}</pre>
             <br>
-            <a href="/debug-db" style="background: #ffc107; color: black; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                Vedi Diagnostica
-            </a>
-            <a href="/login" style="background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">
-                Torna al Login
+            <a href="/setup-admin" style="background: #ffc107; color: black; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                Riprova Setup
             </a>
         </body>
         </html>
@@ -370,11 +380,13 @@ def debug_db():
 # ============================================================================
 
 @app.route('/')
+@require_login
 def index():
     """Home page"""
     return render_template('index.html', utente={'username': session.get('username'), 'ruolo': session.get('ruolo')})
 
 @app.route('/impegni')
+@require_login
 def impegni():
     """Pagina gestione impegni"""
     conn = get_db()
