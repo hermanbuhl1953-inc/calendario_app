@@ -370,13 +370,11 @@ def debug_db():
 # ============================================================================
 
 @app.route('/')
-@require_login
 def index():
     """Home page"""
     return render_template('index.html', utente={'username': session.get('username'), 'ruolo': session.get('ruolo')})
 
 @app.route('/impegni')
-@require_login
 def impegni():
     """Pagina gestione impegni"""
     conn = get_db()
