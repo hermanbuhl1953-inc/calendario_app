@@ -39,8 +39,27 @@
 }
 
 .cella-weekend {
-    background-color: #f8f9fa !important;
+    background-color: #f0f0f0 !important;
 }
+
+.cella-festivo {
+    background-color: #e8e8e8 !important;
+    opacity: 0.8;
+}
+
+/* Scala di blu per i mesi */
+.mese-header-1 { background-color: #E8F4F8 !important; }
+.mese-header-2 { background-color: #D4E9F7 !important; }
+.mese-header-3 { background-color: #C0DEEF !important; }
+.mese-header-4 { background-color: #ACD3E7 !important; }
+.mese-header-5 { background-color: #98C8DF !important; }
+.mese-header-6 { background-color: #84BDD7 !important; }
+.mese-header-7 { background-color: #70B2CF !important; }
+.mese-header-8 { background-color: #5CA7C7 !important; }
+.mese-header-9 { background-color: #489CBF !important; }
+.mese-header-10 { background-color: #3491B7 !important; }
+.mese-header-11 { background-color: #2086AF !important; }
+.mese-header-12 { background-color: #0C7BA7 !important; }
 
 .calendario-table tbody th {
     background-color: #ECF0F1;
@@ -134,7 +153,7 @@
                     <tr>
                         <th rowspan="2">ISTRUTTORE</th>
                         {% for mese in mesi %}
-                        <th colspan="{{ mese.giorni }}" class="mese-header">{{ mese.nome|upper }}</th>
+                        <th colspan="{{ mese.giorni }}" class="mese-header mese-header-{{ mese.numero }}">{{ mese.nome|upper }}</th>
                         {% endfor %}
                     </tr>
                     <!-- Riga giorni -->
@@ -245,22 +264,41 @@ $(document).ready(function() {
 });
 
 function coloraWeekend() {
-    // Colora intestazioni e celle weekend
+    // Colora intestazioni e celle weekend (Sabato=6, Domenica=0)
     const inizioAnno = new Date(anno, 0, 1);
     for (let giorno = 1; giorno <= {{ num_giorni }}; giorno++) {
         const data = new Date(inizioAnno.getTime() + (giorno - 1) * 24 * 60 * 60 * 1000);
-        const weekday = data.getDay(); // 0=Dom, 6=Sab
+        const weekday = data.getDay(); // 0=Domenica, 1=Lunedì, 6=Sabato
+        const dataStr = data.toISOString().split('T')[0];
         
-        if (weekday === 0 || weekday === 6) {
-            // Trova header corrispondente (riga 2 del thead)
+        // Controlla se è weekend (Sabato=6 OPPURE Domenica=0)
+        const isWeekend = weekday === 0 || weekday === 6;
+        
+        // Controlla se è festivo
+        const isFestivo = festivi.includes(dataStr);
+        
+        if (isWeekend) {
+            // Colora header giorno come weekend
             const headerCells = $('.calendario-table thead tr:eq(1) th');
             if (headerCells[giorno]) {
                 $(headerCells[giorno]).addClass('weekend-header');
             }
-            
-            // Colora tutte le celle di questo giorno
-            $(`.cella-giorno[id$="-${giorno}"]`).addClass('cella-weekend');
         }
+        
+        // Colora tutte le celle di questo giorno
+        $(`.cella-giorno[id$="-${giorno}"]`).each(function() {
+            if (isWeekend) {
+                $(this).addClass('cella-weekend');
+            }
+            if (isFestivo && !$(this).hasClass('cella-vuota')) {
+                // Se c'è un impegno festivo, aggiungi classe festivo (più scuro del weekend)
+                $(this).addClass('cella-festivo');
+            } else if (isFestivo) {
+                // Se è festivo ma vuoto, comunque coloralo
+                $(this).addClass('cella-weekend');
+                $(this).addClass('cella-festivo');
+            }
+        });
     }
 }
 
