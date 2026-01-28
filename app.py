@@ -149,6 +149,15 @@ MESI_ITALIANI = [
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Pagina login"""
+    # Auto-crea admin se non esistono utenti
+    conn = get_db()
+    count = conn.execute('SELECT COUNT(*) as cnt FROM utenti').fetchone()
+    if count['cnt'] == 0:
+        # Crea utente admin automaticamente
+        from database import crea_utente
+        crea_utente('3102011', '3102011@trenord.it', 'Admin', 'Calendario', 'Qaqqa1234.', 'Admin')
+    conn.close()
+    
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
