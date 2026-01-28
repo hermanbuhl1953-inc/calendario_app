@@ -119,6 +119,7 @@ def init_db():
     """Inizializza il database con tabelle e dati iniziali"""
     db_path = os.environ.get('DB_PATH', 'calendario.db')
     conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row  # Abilita accesso per nome colonna
     c = conn.cursor()
 
     # Tabella Istruttori

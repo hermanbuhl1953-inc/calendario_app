@@ -1533,15 +1533,16 @@ def api_create_festivo_custom():
         
         festivo_id = c.lastrowid
         conn.commit()
-        conn.close()
         
         log_action("CREATE", f"Festivo custom {festivo_id} creato: {data['data']} - {data['descrizione']}", 
                    request.headers.get('User-Agent', ''))
         
         return jsonify({'success': True, 'id': festivo_id})
     except Exception as e:
-        conn.close()
+        conn.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        conn.close()  # Assicura che si chiude sempre
 
 @app.route('/api/festivi-custom/<int:festivo_id>', methods=['DELETE'])
 def api_delete_festivo_custom(festivo_id):
