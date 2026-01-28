@@ -119,17 +119,6 @@ def init_db():
     """Inizializza il database con tabelle e dati iniziali"""
     conn = sqlite3.connect('calendario.db')
     c = conn.cursor()
-    
-    # Tabella Audit Log
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS audit_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            action TEXT NOT NULL,
-            description TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            user_agent TEXT
-        )
-    ''')
 
     # Tabella Istruttori
     c.execute('''
