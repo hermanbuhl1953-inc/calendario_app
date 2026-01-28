@@ -187,13 +187,27 @@ def logout():
 def setup_admin():
     """Setup iniziale - crea database e admin"""
     try:
-        # Forza init database
+        conn = get_db()
+        c = conn.cursor()
+        
+        # 1. Drop tabelle di auth (sono state create prima con struttura diversa)
+        # e ricreale con la struttura corretta
+        for table in ['audit_log', 'permessi_utente', 'utenti', 'ruoli']:
+            try:
+                c.execute(f'DROP TABLE IF EXISTS {table}')
+            except:
+                pass
+        
+        conn.commit()
+        conn.close()
+        
+        # 2. Ora chiama init_db per ricreate tutto con struttura corretta
         from database import init_db
         init_db()
         
         conn = get_db()
         
-        # 1. Assicurati che i ruoli existono
+        # 3. Assicurati che i ruoli existono
         ruoli_default = [
             ("Admin", "Accesso totale, gestione utenti e permessi"),
             ("Editor", "Può modificare impegni, corsi, attività"),
@@ -205,7 +219,7 @@ def setup_admin():
                         (nome, descrizione))
         conn.commit()
         
-        # 2. Prendi ID ruolo Admin
+        # 4. Prendi ID ruolo Admin
         ruolo_admin = conn.execute("SELECT id FROM ruoli WHERE nome = 'Admin'").fetchone()
         
         if not ruolo_admin:
@@ -213,11 +227,11 @@ def setup_admin():
         
         ruolo_id = ruolo_admin['id']
         
-        # 3. Verifica se admin esiste già
+        # 5. Verifica se admin esiste già
         existing = conn.execute("SELECT * FROM utenti WHERE username = '3102011'").fetchone()
         
         if not existing:
-            # Crea admin - Password in chiaro (bcrypt potrebbe non funzionare)
+            # Crea admin - Password in chiaro
             conn.execute('''
                 INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id, attivo)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -230,7 +244,7 @@ def setup_admin():
         <html>
         <body style="font-family: Arial; text-align: center; padding: 50px;">
             <h1 style="color: green;">✅ Setup Completato!</h1>
-            <p>Database inizializzato con successo</p>
+            <p>Database migrato e inizializzato con successo</p>
             <p><strong>Username:</strong> 3102011</p>
             <p><strong>Password:</strong> Qaqqa1234.</p>
             <br>
