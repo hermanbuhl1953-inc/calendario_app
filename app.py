@@ -183,6 +183,59 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/setup-admin')
+def setup_admin():
+    """Setup iniziale - crea database e admin"""
+    try:
+        # Forza init database
+        from database import init_db
+        init_db()
+        
+        # Verifica se admin esiste già
+        conn = get_db()
+        existing = conn.execute("SELECT * FROM utenti WHERE username = '3102011'").fetchone()
+        
+        if not existing:
+            # Crea admin
+            conn.execute("SELECT id FROM ruoli WHERE nome = 'Admin'")
+            ruolo_admin = conn.fetchone()
+            
+            if ruolo_admin:
+                # Password in chiaro per ora (bcrypt potrebbe non essere disponibile)
+                conn.execute('''
+                    INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', ('3102011', '3102011@trenord.it', 'Admin', 'Calendario', 'Qaqqa1234.', ruolo_admin['id']))
+                conn.commit()
+        
+        conn.close()
+        
+        return '''
+        <html>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1 style="color: green;">✅ Setup Completato!</h1>
+            <p>Database inizializzato con successo</p>
+            <p><strong>Username:</strong> 3102011</p>
+            <p><strong>Password:</strong> Qaqqa1234.</p>
+            <br>
+            <a href="/login" style="background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                Vai al Login
+            </a>
+        </body>
+        </html>
+        '''
+    except Exception as e:
+        return f'''
+        <html>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1 style="color: red;">❌ Errore Setup</h1>
+            <p>{str(e)}</p>
+            <br>
+            <a href="/login">Torna al Login</a>
+        </body>
+        </html>
+        ''', 500
+
 # ============================================================================
 # ROUTES PAGINE
 # ============================================================================
