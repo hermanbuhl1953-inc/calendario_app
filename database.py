@@ -122,6 +122,15 @@ def init_db():
     conn.row_factory = sqlite3.Row  # Abilita accesso per nome colonna
     c = conn.cursor()
 
+    # DROP tabelle di auth vecchie (hanno struttura diversa)
+    # Questo è necessario la prima volta su Render
+    for table in ['permessi_utente', 'utenti', 'audit_log', 'ruoli']:
+        try:
+            c.execute(f'DROP TABLE IF EXISTS {table}')
+        except:
+            pass
+    conn.commit()
+
     # Tabella Istruttori
     c.execute('''
         CREATE TABLE IF NOT EXISTS istruttori (
