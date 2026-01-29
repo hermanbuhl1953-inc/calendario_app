@@ -115,21 +115,26 @@ def calcola_pasqua(anno):
     giorno = ((h + l - 7 * m + 114) % 31) + 1
     return datetime(anno, mese, giorno)
 
-def init_db():
-    """Inizializza il database con tabelle e dati iniziali"""
+def init_db(drop_auth_tables=False):
+    """Inizializza il database con tabelle e dati iniziali
+    
+    Args:
+        drop_auth_tables: Se True, ricrea tabelle auth (utenti/ruoli/audit)
+    """
     db_path = os.environ.get('DB_PATH', 'calendario.db')
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row  # Abilita accesso per nome colonna
     c = conn.cursor()
 
-    # DROP tabelle di auth vecchie (hanno struttura diversa)
-    # Questo è necessario la prima volta su Render
-    for table in ['permessi_utente', 'utenti', 'audit_log', 'ruoli']:
-        try:
-            c.execute(f'DROP TABLE IF EXISTS {table}')
-        except:
-            pass
-    conn.commit()
+    # DROP tabelle di auth solo se richiesto (evita perdita utenti ad ogni avvio)
+    reset_auth = drop_auth_tables or os.environ.get('RESET_AUTH_TABLES') == '1'
+    if reset_auth:
+        for table in ['permessi_utente', 'utenti', 'audit_log', 'ruoli']:
+            try:
+                c.execute(f'DROP TABLE IF EXISTS {table}')
+            except:
+                pass
+        conn.commit()
 
     # Tabella Istruttori
     c.execute('''

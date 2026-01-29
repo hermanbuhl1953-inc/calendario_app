@@ -250,7 +250,7 @@ def setup_admin():
         
         # Ricrea tabelle con init_db
         from database import init_db
-        init_db()
+        init_db(drop_auth_tables=True)
         
         # Connetti di nuovo e inserisci dati
         conn = get_db()
