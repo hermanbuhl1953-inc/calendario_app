@@ -1156,11 +1156,11 @@ def api_calendario(anno):
 
 @app.route('/api/sovrapposizioni')
 def api_sovrapposizioni():
-    """Trova sovrapposizioni tra impegni dello stesso istruttore"""
+    """Trova sovrapposizioni tra impegni dello stesso istruttore, escludendo giorni con sostituzioni"""
     conn = get_db()
     
-    # Query migliorata per trovare tutte le sovrapposizioni
-    sovrapposizioni = conn.execute('''
+    # Trova tutte le sovrapposizioni
+    sovrapposizioni_raw = conn.execute('''
         SELECT 
             i1.id as id1, i2.id as id2,
             i1.istruttore_id as istruttore_id,
@@ -1179,9 +1179,43 @@ def api_sovrapposizioni():
         ORDER BY ist.nome, i1.data_inizio
     ''').fetchall()
     
+    # Recupera tutte le sostituzioni per filtrare i conflitti risolti
+    sostituzioni_set = set()
+    sostituzioni_raw = conn.execute('''
+        SELECT impegno_id, istruttore_originale_id, data_sostituzione
+        FROM sostituzioni
+    ''').fetchall()
+    for s in sostituzioni_raw:
+        sostituzioni_set.add((s['impegno_id'], s['istruttore_originale_id'], s['data_sostituzione']))
+    
     conn.close()
     
-    return jsonify([dict(sov) for sov in sovrapposizioni])
+    # Filtra sovrapposizioni: escludi quelle completamente risolte con sostituzioni
+    from datetime import datetime
+    sovrapposizioni_filtrate = []
+    for sov in sovrapposizioni_raw:
+        # Calcola range di sovrapposizione
+        start = max(sov['inizio1'], sov['inizio2'])
+        end = min(sov['fine1'], sov['fine2'])
+        
+        # Verifica se tutti i giorni sovrapposti hanno sostituzioni
+        d1 = datetime.strptime(start, '%Y-%m-%d')
+        d2 = datetime.strptime(end, '%Y-%m-%d')
+        giorni_conflitto = []
+        while d1 <= d2:
+            data_str = d1.strftime('%Y-%m-%d')
+            # Controlla se questo giorno ha una sostituzione per uno dei due impegni
+            ha_sost_i1 = (sov['id1'], sov['istruttore_id'], data_str) in sostituzioni_set
+            ha_sost_i2 = (sov['id2'], sov['istruttore_id'], data_str) in sostituzioni_set
+            if not ha_sost_i1 and not ha_sost_i2:
+                giorni_conflitto.append(data_str)
+            d1 += timedelta(days=1)
+        
+        # Aggiungi solo se ci sono giorni senza sostituzione
+        if giorni_conflitto:
+            sovrapposizioni_filtrate.append(dict(sov))
+    
+    return jsonify(sovrapposizioni_filtrate)
 
 @app.route('/api/statistiche')
 def api_statistiche():

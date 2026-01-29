@@ -434,6 +434,32 @@ function popolaCalendario() {
         }
     });
 
+    // Applica sostituzioni PRIMA di renderizzare
+    sostituzioni.forEach(sost => {
+        const dataSost = new Date(sost.data_sostituzione);
+        const giornoSost = Math.floor((dataSost - inizioAnno) / (1000 * 60 * 60 * 24)) + 1;
+        
+        if (giornoSost >= 1 && giornoSost <= {{ num_giorni }}) {
+            // Rimuovi dall'istruttore ORIGINALE
+            const keyOrig = `${sost.istruttore_originale_id}-${giornoSost}`;
+            if (occupazioni[keyOrig]) {
+                occupazioni[keyOrig] = occupazioni[keyOrig].filter(imp => imp.id !== sost.impegno_id);
+                if (occupazioni[keyOrig].length === 0) {
+                    delete occupazioni[keyOrig];
+                }
+            }
+            
+            // Aggiungi all'istruttore SOSTITUTO
+            const keySost = `${sost.istruttore_sostituto_id}-${giornoSost}`;
+            const impegnoOriginale = impegni.find(i => i.id === sost.impegno_id);
+            if (impegnoOriginale) {
+                const impegnoSost = {...impegnoOriginale, _sostituzione: sost};
+                if (!occupazioni[keySost]) occupazioni[keySost] = [];
+                occupazioni[keySost].push(impegnoSost);
+            }
+        }
+    });
+
     // Renderizza celle in base alle occupazioni
     Object.entries(occupazioni).forEach(([key, items]) => {
         const [istrId, g] = key.split('-');
@@ -451,7 +477,11 @@ function popolaCalendario() {
             cella.removeClass('cella-conflitto');
             
             cella.off('click').on('click', function() {
-                mostraDettaglioImpegno(impegno);
+                if (impegno._sostituzione) {
+                    mostraDettaglioSostituzione(impegno, impegno._sostituzione);
+                } else {
+                    mostraDettaglioImpegno(impegno);
+                }
             });
         } else {
             cella.addClass('cella-conflitto');
@@ -497,6 +527,36 @@ function popolaCalendario() {
             }
         }
     });
+}
+
+function mostraDettaglioSostituzione(impegno, sost) {
+    const html = `
+        <div class="alert alert-info">
+            <i class="fas fa-exchange-alt"></i> <strong>SOSTITUZIONE</strong>
+        </div>
+        <p><strong>Data:</strong> ${formatData(sost.data_sostituzione)}</p>
+        <p><strong>Istruttore Originale:</strong> ${sost.istruttore_originale}</p>
+        <p><strong>Istruttore Sostituto:</strong> ${sost.istruttore_sostituto}</p>
+        <p><strong>Attività:</strong> 
+            <span class="badge" style="background-color: #${impegno.colore};">
+                ${impegno.attivita_nome}
+            </span>
+        </p>
+        ${impegno.id_corso ? `<p><strong>ID Corso:</strong> ${impegno.id_corso}</p>` : ''}
+        ${sost.note ? `<p><strong>Motivo:</strong> ${sost.note}</p>` : ''}
+    `;
+    
+    $('#modalDettaglioBody').html(html);
+    
+    if (impegno.id_corso) {
+        $('#btnVaiCorso').show().off('click').on('click', function() {
+            window.location.href = `/corso/${encodeURIComponent(impegno.id_corso)}`;
+        });
+    } else {
+        $('#btnVaiCorso').hide();
+    }
+    
+    new bootstrap.Modal($('#modalDettaglio')).show();
 }
 
 function mostraConflittoCalendario(items, giornoIndice) {
