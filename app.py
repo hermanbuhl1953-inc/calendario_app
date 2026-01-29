@@ -1576,6 +1576,26 @@ def api_delete_festivo_custom(festivo_id):
 # API GESTIONE CORSI
 # ============================================================================
 
+@app.route('/api/calcola-data-fine', methods=['POST'])
+def api_calcola_data_fine():
+    """Calcola data fine dato data inizio e giorni lavorativi"""
+    try:
+        data = request.json
+        data_inizio = data.get('data_inizio')
+        giorni_lavorativi = int(data.get('giorni_lavorativi', 0))
+        
+        if not data_inizio or giorni_lavorativi <= 0:
+            return jsonify({'error': 'Parametri mancanti'}), 400
+        
+        data_fine = calcola_data_fine(data_inizio, giorni_lavorativi)
+        
+        return jsonify({
+            'success': True,
+            'data_fine': data_fine
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/corsi', methods=['POST'])
 def api_create_corso():
     """Crea un nuovo corso con impegni associati"""
@@ -1633,11 +1653,14 @@ def api_create_corso():
                 }), 409
             
             # Crea impegno
+            # Determina istruttore di riferimento per questo impegno
+            istruttore_rif_id = data.get('istruttore_riferimento') if att['istruttore_id'] == data.get('istruttore_riferimento') else None
+            
             c.execute('''
                 INSERT INTO impegni
                 (id_corso, istruttore_id, attivita_id, data_inizio, giorni_lavorativi,
-                 data_fine, note)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                 data_fine, note, luogo, aula, posti, istruttore_riferimento)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data['id_corso'],
                 att['istruttore_id'],
@@ -1645,7 +1668,11 @@ def api_create_corso():
                 att['data_inizio'],
                 att['giorni_lavorativi'],
                 data_fine,
-                att.get('note', '')
+                att.get('note', ''),
+                data.get('luogo', ''),
+                data.get('aula', ''),
+                data.get('posti', ''),
+                istruttore_rif_id
             ))
             
             impegni_creati.append(c.lastrowid)

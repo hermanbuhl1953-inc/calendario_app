@@ -62,8 +62,45 @@
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Data Fine Corso *</label>
-                            <input type="date" class="form-control" id="corsoDataFine" required>
+                            <label class="form-label">Data Fine Corso</label>
+                            <input type="date" class="form-control" id="corsoDataFine">
+                            <small class="text-muted">Oppure inserisci giorni lavorativi sotto</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Oppure: Numero Giorni Lavorativi</label>
+                            <input type="number" class="form-control" id="corsoGiorniLavorativi" min="1" 
+                                   placeholder="Es: 30">
+                            <small class="text-muted">Calcola automaticamente la data fine (esclusi weekend e festivi)</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Luogo *</label>
+                            <select class="form-select" id="corsoLuogo" required>
+                                <option value="">Seleziona...</option>
+                                <option value="CADORNA">CADORNA</option>
+                                <option value="CAMNAGO">CAMNAGO</option>
+                                <option value="FIORENZA">FIORENZA</option>
+                                <option value="GARIBALDI">GARIBALDI</option>
+                                <option value="NOVATE">NOVATE</option>
+                                <option value="ALTRO">ALTRO</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Aula</label>
+                            <input type="text" class="form-control" id="corsoAula" 
+                                   placeholder="Es: Aula 1, Sala Riunioni">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Numero Posti</label>
+                            <input type="text" class="form-control" id="corsoPosti" 
+                                   placeholder="Es: 20, 15-25">
                         </div>
                     </div>
                     
@@ -102,6 +139,13 @@
                         <strong>Istruttori Selezionati:</strong> 
                         <div id="istruttoriSelezionati" class="mt-2">
                             <small class="text-muted">Nessuno selezionato</small>
+                        </div>
+                        <div class="mt-3" id="divIstruttoreRiferimento" style="display:none;">
+                            <label class="form-label"><strong>Istruttore di Riferimento:</strong></label>
+                            <select class="form-select" id="istruttoreRiferimento">
+                                <option value="">Nessuno</option>
+                            </select>
+                            <small class="text-muted">Seleziona l'istruttore responsabile del corso</small>
                         </div>
                     </div>
                 </div>
@@ -160,6 +204,18 @@
                                     <p class="mb-1"><strong>Tipo:</strong> <span id="riepilogoTipo">-</span></p>
                                     <p class="mb-1"><strong>Periodo:</strong> <span id="riepilogoPeriodo">-</span></p>
                                     <p class="mb-0"><strong>Durata:</strong> <span id="riepilogoDurata">-</span> giorni</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6>Logistica</h6>
+                                    <p class="mb-1"><strong>Luogo:</strong> <span id="riepilogoLuogo">-</span></p>
+                                    <p class="mb-1"><strong>Aula:</strong> <span id="riepilogoAula">-</span></p>
+                                    <p class="mb-1"><strong>Posti:</strong> <span id="riepilogoPosti">-</span></p>
+                                    <p class="mb-0"><strong>Istruttore Riferimento:</strong> <span id="riepilogoRiferimento">-</span></p>
                                 </div>
                             </div>
                         </div>
@@ -310,6 +366,7 @@ $(document).ready(function() {
     
     // Listeners
     $('#corsoDataInizio, #corsoDataFine').on('change', calcolaDurataCorso);
+    $('#corsoGiorniLavorativi').on('input', calcolaDataFineAutomatica);
     $('#cercaIstruttore').on('input', filtraIstruttori);
     $('#attDataInizio').attr('min', function() {
         const dataInizio = $('#corsoDataInizio').val();
@@ -317,6 +374,30 @@ $(document).ready(function() {
         return '';
     });
 });
+
+function calcolaDataFineAutomatica() {
+    const inizio = $('#corsoDataInizio').val();
+    const giorni = parseInt($('#corsoGiorniLavorativi').val());
+    
+    if (inizio && giorni > 0) {
+        // Chiama API per calcolare data fine
+        $.ajax({
+            url: '/api/calcola-data-fine',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                data_inizio: inizio,
+                giorni_lavorativi: giorni
+            }),
+            success: function(response) {
+                if (response.data_fine) {
+                    $('#corsoDataFine').val(response.data_fine);
+                    calcolaDurataCorso();
+                }
+            }
+        });
+    }
+}
 
 function calcolaDurataCorso() {
     const inizio = $('#corsoDataInizio').val();
@@ -371,9 +452,12 @@ function toggleIstruttore(id) {
 
 function aggiornaIstruttoriSelezionati() {
     const div = $('#istruttoriSelezionati');
+    const divRif = $('#divIstruttoreRiferimento');
+    const selectRif = $('#istruttoreRiferimento');
     
     if (istruttoriSelezionati.length === 0) {
         div.html('<small class="text-muted">Nessuno selezionato</small>');
+        divRif.hide();
     } else {
         let html = '<div class="d-flex flex-wrap gap-2">';
         istruttoriSelezionati.forEach(id => {
@@ -388,6 +472,14 @@ function aggiornaIstruttoriSelezionati() {
         });
         html += '</div>';
         div.html(html);
+        
+        // Popola select istruttore di riferimento
+        divRif.show();
+        selectRif.empty().append('<option value="">Nessuno</option>');
+        istruttoriSelezionati.forEach(id => {
+            const ist = tuttiIstruttori.find(i => i.id === id);
+            selectRif.append(`<option value="${id}">${ist.nome}</option>`);
+        });
     }
 }
 
@@ -522,8 +614,9 @@ function validaStep(step) {
                 alert('Inserisci la data di inizio');
                 return false;
             }
-            if (!$('#corsoDataFine').val()) {
-                alert('Inserisci la data di fine');
+            // Data fine obbligatoria solo se non specificati giorni lavorativi
+            if (!$('#corsoDataFine').val() && !$('#corsoGiorniLavorativi').val()) {
+                alert('Inserisci la data di fine OPPURE i giorni lavorativi');
                 return false;
             }
             return true;
@@ -557,6 +650,20 @@ function riepilogo() {
     const giorni = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
     $('#riepilogoDurata').text(giorni);
     
+    // Nuovi campi logistici
+    $('#riepilogoLuogo').text($('#corsoLuogo').val() || 'Non specificato');
+    $('#riepilogoAula').text($('#corsoAula').val() || 'Non specificata');
+    $('#riepilogoPosti').text($('#corsoPosti').val() || 'Non specificato');
+    
+    // Istruttore di riferimento
+    const rifId = $('#istruttoreRiferimento').val();
+    if (rifId) {
+        const istRif = tuttiIstruttori.find(i => i.id == rifId);
+        $('#riepilogoRiferimento').text(istRif ? istRif.nome : 'Non trovato');
+    } else {
+        $('#riepilogoRiferimento').text('Non specificato');
+    }
+    
     $('#riepilogoIstruttori').text(istruttoriSelezionati.length);
     $('#riepilogoAttivita').text(attivitaCorso.length);
     
@@ -573,6 +680,10 @@ function creaCorso() {
         data_inizio: $('#corsoDataInizio').val(),
         data_fine: $('#corsoDataFine').val(),
         note: $('#corsoNote').val(),
+        luogo: $('#corsoLuogo').val(),
+        aula: $('#corsoAula').val(),
+        posti: $('#corsoPosti').val(),
+        istruttore_riferimento: $('#istruttoreRiferimento').val(),
         istruttori: istruttoriSelezionati,
         attivita: attivitaCorso
     };

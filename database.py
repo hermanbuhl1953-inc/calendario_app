@@ -165,10 +165,15 @@ def init_db():
             giorno_extra_3 DATE,
             data_fine DATE,
             note TEXT,
+            luogo TEXT,
+            aula TEXT,
+            posti TEXT,
+            istruttore_riferimento INTEGER,
             creato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             modificato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (istruttore_id) REFERENCES istruttori(id),
-            FOREIGN KEY (attivita_id) REFERENCES tipi_attivita(id)
+            FOREIGN KEY (attivita_id) REFERENCES tipi_attivita(id),
+            FOREIGN KEY (istruttore_riferimento) REFERENCES istruttori(id)
         )
     ''')
     
