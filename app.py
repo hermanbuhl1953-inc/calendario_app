@@ -515,12 +515,24 @@ def corso(id_corso):
         conn.close()
         return "Corso non trovato", 404
     
+    # Recupera istruttore di riferimento (se presente)
+    istruttore_riferimento_id = impegni_corso[0].get('istruttore_riferimento') if impegni_corso else None
+    
+    # Recupera info logistiche dal primo impegno
+    luogo_corso = impegni_corso[0].get('luogo') if impegni_corso else None
+    aula_corso = impegni_corso[0].get('aula') if impegni_corso else None
+    posti_corso = impegni_corso[0].get('posti') if impegni_corso else None
+    
     # Lista istruttori UNICI per il calendario (senza duplicati)
     istruttori_unici = []
     istruttori_visti = set()
     for imp in impegni_corso:
         if imp['istruttore_id'] not in istruttori_visti:
-            istruttori_unici.append({'id': imp['istruttore_id'], 'nome': imp['istruttore_nome']})
+            istruttori_unici.append({
+                'id': imp['istruttore_id'], 
+                'nome': imp['istruttore_nome'],
+                'is_riferimento': (imp['istruttore_id'] == istruttore_riferimento_id)
+            })
             istruttori_visti.add(imp['istruttore_id'])
     
     # Trova periodo totale del corso (min data_inizio, max data_fine)
@@ -567,6 +579,10 @@ def corso(id_corso):
                          id_corso=id_corso,
                          impegni=impegni_corso,
                          istruttori_unici=istruttori_unici,
+                         istruttore_riferimento_id=istruttore_riferimento_id,
+                         luogo=luogo_corso,
+                         aula=aula_corso,
+                         posti=posti_corso,
                          giorni=giorni,
                          num_giorni=num_giorni,
                          data_inizio=data_inizio_corso,

@@ -137,7 +137,7 @@
             <div class="card-body">
                 <!-- Info Riepilogo -->
                 <div class="row mb-4">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="card bg-light">
                             <div class="card-body">
                                 <h6><i class="fas fa-calendar-day"></i> Periodo</h6>
@@ -146,7 +146,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="card bg-light">
                             <div class="card-body">
                                 <h6><i class="fas fa-clock"></i> Durata</h6>
@@ -155,11 +155,56 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="card bg-light">
                             <div class="card-body">
                                 <h6><i class="fas fa-users"></i> Istruttori</h6>
                                 <p class="mb-0"><strong>N° Impegni:</strong> {{ impegni|length }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-map-marker-alt"></i> Logistica</h6>
+                                <p class="mb-1" style="font-size: 0.85rem;"><strong>Luogo:</strong> {{ luogo or '-' }}</p>
+                                <p class="mb-1" style="font-size: 0.85rem;"><strong>Aula:</strong> {{ aula or '-' }}</p>
+                                <p class="mb-0" style="font-size: 0.85rem;"><strong>Posti:</strong> {{ posti or '-' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sezione Istruttori Assegnati -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="fas fa-chalkboard-teacher"></i> Istruttori Assegnati al Corso</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for ist in istruttori_unici %}
+                                    <div class="col-md-6 mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user-circle text-primary me-2" style="font-size: 1.5rem;"></i>
+                                            <div>
+                                                <strong>{{ ist.nome }}</strong>
+                                                {% if ist.is_riferimento %}
+                                                <span class="badge bg-success ms-2">
+                                                    <i class="fas fa-star"></i> Riferimento
+                                                </span>
+                                                {% else %}
+                                                <span class="badge bg-secondary ms-2">Assegnato</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% if istruttori_unici|length == 0 %}
+                                <p class="text-muted mb-0"><i class="fas fa-info-circle"></i> Nessun istruttore assegnato</p>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
