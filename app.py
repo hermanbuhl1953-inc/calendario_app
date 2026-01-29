@@ -17,10 +17,42 @@ from openpyxl.utils import get_column_letter
 import io
 from functools import wraps
 import os
+import urllib.request
+from pathlib import Path
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-production-' + os.urandom(12).hex())
+
+# Ensure static libraries are downloaded
+def ensure_static_libs():
+    """Ensure Bootstrap and FontAwesome files are available"""
+    lib_dir = Path(__file__).parent / 'static' / 'lib'
+    
+    files_to_check = {
+        'bootstrap/bootstrap.min.css': 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+        'bootstrap/bootstrap.bundle.min.js': 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
+        'fontawesome/all.min.css': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+        'fontawesome/fa-solid-900.woff2': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2',
+        'fontawesome/fa-solid-900.ttf': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf',
+    }
+    
+    for rel_path, url in files_to_check.items():
+        file_path = lib_dir / rel_path
+        if not file_path.exists():
+            try:
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                print(f"📥 Downloading {rel_path}...")
+                urllib.request.urlretrieve(url, str(file_path))
+                print(f"✅ Downloaded {rel_path}")
+            except Exception as e:
+                print(f"⚠️ Could not download {rel_path}: {e}")
+
+# Try to ensure libs on startup (non-blocking)
+try:
+    ensure_static_libs()
+except Exception as e:
+    print(f"⚠️ Static libs setup error: {e}")
 
 # Initialize DB on startup (ensures tables exist on Render)
 try:
