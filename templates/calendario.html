@@ -158,9 +158,11 @@
                     </tr>
                     <!-- Riga giorni -->
                     <tr>
+                        {% set day_index = 1 %}
                         {% for mese in mesi %}
                             {% for giorno_mese in range(1, mese.giorni + 1) %}
-                            <th class="day-header" data-mese="{{ mese.numero }}" data-giorno-mese="{{ giorno_mese }}">{{ giorno_mese }}</th>
+                            <th class="day-header" data-giorno="{{ day_index }}" data-weekday="{{ giorno_info[day_index-1].weekday }}">{{ giorno_mese }}</th>
+                            {% set day_index = day_index + 1 %}
                             {% endfor %}
                         {% endfor %}
                     </tr>
@@ -264,53 +266,40 @@ $(document).ready(function() {
 });
 
 function coloraWeekend() {
-    // Crea mappa data -> giorno della settimana
-    const inizioAnno = new Date(anno, 0, 1);
-    const dayMap = {}; // dataStr -> weekday
-    
-    for (let g = 1; g <= {{ num_giorni }}; g++) {
-        const data = new Date(inizioAnno.getTime() + (g - 1) * 24 * 60 * 60 * 1000);
-        const dataStr = data.toISOString().split('T')[0];
-        const weekday = data.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
-        dayMap[dataStr] = weekday;
-    }
-    
     // Colora gli header dei giorni (numeri nel calendario)
     $('.day-header').each(function() {
-        const mese = parseInt($(this).data('mese'));
-        const giornoMese = parseInt($(this).data('giorno-mese'));
-        
-        // Ricostruisci la data
-        const dataStr = anno + '-' + String(mese).padStart(2, '0') + '-' + String(giornoMese).padStart(2, '0');
-        const weekday = dayMap[dataStr];
+        const weekday = parseInt($(this).data('weekday'));
         
         if (weekday === 6) {
             // SABATO = GIALLO
-            $(this).css('background-color', '#FFD700 !important');
+            $(this).css('background-color', '#FFD700');
             $(this).css('color', '#000');
+            $(this).css('font-weight', 'bold');
         } else if (weekday === 0) {
             // DOMENICA = ROSSO
-            $(this).css('background-color', '#FF6B6B !important');
+            $(this).css('background-color', '#FF6B6B');
             $(this).css('color', '#fff');
+            $(this).css('font-weight', 'bold');
         }
     });
     
-    // Colora le celle
+    // Colora le celle del corpo tabella
     for (let g = 1; g <= {{ num_giorni }}; g++) {
-        const data = new Date(inizioAnno.getTime() + (g - 1) * 24 * 60 * 60 * 1000);
-        const dataStr = data.toISOString().split('T')[0];
-        const weekday = data.getDay();
+        const info = {{ giorno_info|tojson }}.find(x => x.giorno === g);
+        if (!info) continue;
+        
+        const weekday = info.weekday;
+        const dataStr = info.data;
         
         const isWeekend = weekday === 0 || weekday === 6;
         const isFestivo = festivi.includes(dataStr);
         
         // Colora tutte le celle di questo giorno
         $(`.cella-giorno[id$="-${g}"]`).each(function() {
-            if (isFestivo || isWeekend) {
+            if (isFestivo) {
+                $(this).addClass('cella-festivo');
+            } else if (isWeekend) {
                 $(this).addClass('cella-weekend');
-                if (isFestivo) {
-                    $(this).addClass('cella-festivo');
-                }
             }
         });
     }

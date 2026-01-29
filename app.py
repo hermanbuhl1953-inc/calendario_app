@@ -459,6 +459,20 @@ def calendario(anno):
     # Festivi italiani
     festivi = get_festivi_italiani(anno)
     
+    # Crea array giorno_info: per ogni giorno dell'anno, salva weekday (0=Dom, 6=Sab)
+    giorno_info = []
+    from datetime import date
+    for g in range(1, num_giorni + 1):
+        data = date(anno, 1, 1) + timedelta(days=g-1)
+        weekday = data.weekday()  # Python: 0=Lun, 6=Dom
+        # Converti a formato JS: 0=Dom, 1=Lun, ..., 6=Sab
+        weekday_js = (weekday + 1) % 7
+        giorno_info.append({
+            'giorno': g,
+            'weekday': weekday_js,
+            'data': data.strftime('%Y-%m-%d')
+        })
+    
     # Crea struttura mesi con nomi italiani
     mesi = []
     for mese in range(1, 13):
@@ -476,7 +490,8 @@ def calendario(anno):
                          istruttori=istruttori,
                          impegni=impegni_anno,
                          sostituzioni=sostituzioni_anno,
-                         festivi=festivi)
+                         festivi=festivi,
+                         giorno_info=giorno_info)
 
 @app.route('/corso/<path:id_corso>')
 def corso(id_corso):
