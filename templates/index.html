@@ -304,6 +304,8 @@ $(document).ready(function() {
                 </div>
             `);
         } else {
+            conflitti.forEach((c, i) => c._idx = i);
+            conflittiCache = conflitti;
             // Mostra primi 5 conflitti
             conflitti.slice(0, 5).forEach(function(conf) {
                 const badge = conf.categoria1 === 'ESAME' || conf.categoria2 === 'ESAME' ? 'danger' : 'warning';
@@ -312,6 +314,11 @@ $(document).ready(function() {
                         <div class="small fw-bold">${conf.istruttore}</div>
                         <div class="small">${conf.attivita1} vs ${conf.attivita2}</div>
                         <div class="small text-muted">${formatData(conf.inizio1)} / ${formatData(conf.inizio2)}</div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-dark" onclick="apriConflitto(${conf._idx})">
+                                Risolvi
+                            </button>
+                        </div>
                     </div>
                 `);
             });
@@ -326,6 +333,164 @@ $(document).ready(function() {
         }
     });
 });
+
+let conflittiCache = [];
+let istruttoriCache = [];
+
+function caricaIstruttori() {
+    if (istruttoriCache.length > 0) return Promise.resolve(istruttoriCache);
+    return $.getJSON('/api/istruttori').then(function(data) {
+        istruttoriCache = data || [];
+        return istruttoriCache;
+    });
+}
+
+function apriConflitto(idx) {
+    const conf = conflittiCache[idx];
+    if (!conf) return;
+    const overlapDate = conf.inizio1 > conf.inizio2 ? conf.inizio1 : conf.inizio2;
+    caricaIstruttori().then(function() {
+        const elencoIstruttori = istruttoriCache
+            .filter(i => i.id != conf.istruttore_id)
+            .map(i => {
+                const nome = `${i.cognome || ''} ${i.nome || ''}`.trim();
+                return `<option value="${i.id}">${nome}</option>`;
+            }).join('');
+
+        const body = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                Conflitto per <strong>${conf.istruttore}</strong>
+            </div>
+            <div class="mb-2">
+                <a class="btn btn-sm btn-outline-secondary" href="/impegni?istruttore=${encodeURIComponent(conf.istruttore)}&data=${overlapDate}">
+                    Apri gestione impegni con filtri
+                </a>
+            </div>
+            <div class="mb-2"><strong>Impegni in conflitto:</strong></div>
+            <div class="list-group mb-3">
+                <label class="list-group-item">
+                    <input class="form-check-input me-2" type="radio" name="conflittoImpegno" value="${conf.id1}" checked>
+                    <strong>${conf.attivita1}</strong> (${formatData(conf.inizio1)} → ${formatData(conf.fine1)})
+                </label>
+                <label class="list-group-item">
+                    <input class="form-check-input me-2" type="radio" name="conflittoImpegno" value="${conf.id2}">
+                    <strong>${conf.attivita2}</strong> (${formatData(conf.inizio2)} → ${formatData(conf.fine2)})
+                </label>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Data conflitto</label>
+                    <input type="date" class="form-control" id="conflittoData" value="${overlapDate}">
+                    <small class="text-muted">Data usata per la sostituzione</small>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Sostituto</label>
+                    <select class="form-select" id="conflittoSostituto">
+                        <option value="">Seleziona...</option>
+                        ${elencoIstruttori}
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Sposta impegno di (giorni lavorativi)</label>
+                    <input type="number" class="form-control" id="conflittoShiftDays" min="1" value="1">
+                </div>
+            </div>
+        `;
+        $('#modalConflittoHomeBody').html(body);
+        $('#btnRisolviSostituzione').off('click').on('click', function() {
+            risolviConflittoSostituzione(conf.istruttore_id);
+        });
+        $('#btnRisolviSpostamento').off('click').on('click', function() {
+            risolviConflittoSpostamento();
+        });
+        new bootstrap.Modal($('#modalConflittoHome')).show();
+    });
+}
+
+function getImpegnoSelezionato() {
+    return $('input[name="conflittoImpegno"]:checked').val();
+}
+
+async function risolviConflittoSostituzione(istruttoreId) {
+    const impegnoId = getImpegnoSelezionato();
+    const sostId = $('#conflittoSostituto').val();
+    const dataStr = $('#conflittoData').val();
+    if (!impegnoId || !sostId || !dataStr) {
+        alert('Seleziona impegno, sostituto e data.');
+        return;
+    }
+    try {
+        const res = await fetch('/api/sostituzioni', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                impegno_id: Number(impegnoId),
+                istruttore_originale_id: Number(istruttoreId),
+                istruttore_sostituto_id: Number(sostId),
+                data_sostituzione: dataStr,
+                note: 'Risoluzione conflitto da home page'
+            })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(`Errore: ${res.status} ${err.message || err.error || ''}`);
+            return;
+        }
+        new bootstrap.Modal($('#modalConflittoHome')).hide();
+        location.reload();
+    } catch (e) {
+        alert('Errore di rete nella sostituzione');
+    }
+}
+
+async function risolviConflittoSpostamento() {
+    const impegnoId = getImpegnoSelezionato();
+    const days = parseInt($('#conflittoShiftDays').val() || '0', 10);
+    if (!impegnoId || !days || days < 1) {
+        alert('Seleziona impegno e inserisci giorni validi.');
+        return;
+    }
+    try {
+        const res = await fetch(`/api/impegni/${impegnoId}/shift`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ days })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(`Errore: ${res.status} ${err.messaggio || err.error || ''}`);
+            return;
+        }
+        new bootstrap.Modal($('#modalConflittoHome')).hide();
+        location.reload();
+    } catch (e) {
+        alert('Errore di rete nello spostamento');
+    }
+}
 </script>
+<!-- Modal Risoluzione Conflitto Home -->
+<div class="modal fade" id="modalConflittoHome" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Risolvi Conflitto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalConflittoHomeBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary" id="btnRisolviSpostamento">
+                    Sposta Impegno
+                </button>
+                <button type="button" class="btn btn-primary" id="btnRisolviSostituzione">
+                    Sostituisci Giorno
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 

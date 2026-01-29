@@ -932,8 +932,9 @@ def api_create_impegno():
         c.execute('''
             INSERT INTO impegni 
             (id_corso, istruttore_id, attivita_id, data_inizio, giorni_lavorativi, 
-             giorno_extra_1, giorno_extra_2, giorno_extra_3, data_fine, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             giorno_extra_1, giorno_extra_2, giorno_extra_3, data_fine, note,
+             luogo, aula, posti)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data.get('id_corso', ''),
             data['istruttore_id'],
@@ -944,7 +945,10 @@ def api_create_impegno():
             giorni_extra[1] if len(giorni_extra) > 1 else None,
             giorni_extra[2] if len(giorni_extra) > 2 else None,
             data_fine,
-            data.get('note', '')
+            data.get('note', ''),
+            data.get('luogo'),
+            data.get('aula'),
+            data.get('posti')
         ))
         
         impegno_id = c.lastrowid
@@ -1028,6 +1032,7 @@ def api_update_impegno(impegno_id):
                 data_inizio = ?, giorni_lavorativi = ?, 
                 giorno_extra_1 = ?, giorno_extra_2 = ?, giorno_extra_3 = ?,
                 data_fine = ?, note = ?,
+                luogo = ?, aula = ?, posti = ?,
                 modificato_il = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (
@@ -1041,6 +1046,9 @@ def api_update_impegno(impegno_id):
             giorni_extra[2] if len(giorni_extra) > 2 else None,
             data_fine,
             data.get('note', ''),
+            data.get('luogo'),
+            data.get('aula'),
+            data.get('posti'),
             impegno_id
         ))
         conn.commit()
@@ -1155,6 +1163,7 @@ def api_sovrapposizioni():
     sovrapposizioni = conn.execute('''
         SELECT 
             i1.id as id1, i2.id as id2,
+            i1.istruttore_id as istruttore_id,
             ist.nome as istruttore,
             ta1.nome as attivita1, i1.data_inizio as inizio1, i1.data_fine as fine1,
             ta2.nome as attivita2, i2.data_inizio as inizio2, i2.data_fine as fine2,

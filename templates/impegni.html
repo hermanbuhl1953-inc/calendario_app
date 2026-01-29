@@ -82,6 +82,9 @@
                                 <th>Data Inizio</th>
                                 <th>Giorni</th>
                                 <th>Data Fine</th>
+                                <th>Luogo</th>
+                                <th>Aula</th>
+                                <th>Posti</th>
                                 <th>Note</th>
                                 <th>Azioni</th>
                             </tr>
@@ -106,6 +109,9 @@
                                 <td>{{ imp.data_inizio|itdate }}</td>
                                 <td>{{ imp.giorni_lavorativi }}</td>
                                 <td>{{ imp.data_fine|itdate }}</td>
+                                <td>{{ imp.luogo or '-' }}</td>
+                                <td>{{ imp.aula or '-' }}</td>
+                                <td>{{ imp.posti or '-' }}</td>
                                 <td>{{ imp.note or '-' }}</td>
                                 <td>
                                     <button class="btn btn-sm btn-warning" onclick="modificaImpegno({{ imp.id }})">
@@ -170,6 +176,29 @@
                                 </option>
                                 {% endfor %}
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Luogo</label>
+                            <select class="form-select" id="impegno_luogo">
+                                <option value="">Seleziona...</option>
+                                <option value="CADORNA">CADORNA</option>
+                                <option value="CAMNAGO">CAMNAGO</option>
+                                <option value="FIORENZA">FIORENZA</option>
+                                <option value="GARIBALDI">GARIBALDI</option>
+                                <option value="NOVATE">NOVATE</option>
+                                <option value="ALTRO">ALTRO</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Aula</label>
+                            <input type="text" class="form-control" id="impegno_aula" placeholder="Es. Aula 3">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Posti</label>
+                            <input type="text" class="form-control" id="impegno_posti" placeholder="Es. 25">
                         </div>
                     </div>
                     
@@ -376,6 +405,9 @@ function nuovoImpegno() {
     $('#formImpegno')[0].reset();
     $('#impegno_id').val('');
     $('#data_fine').val('');
+    $('#impegno_luogo').val('');
+    $('#impegno_aula').val('');
+    $('#impegno_posti').val('');
 }
 
 function modificaImpegno(id) {
@@ -396,6 +428,9 @@ function modificaImpegno(id) {
             $('#giorno_extra_2').val(impegno.giorno_extra_2 || '');
             $('#giorno_extra_3').val(impegno.giorno_extra_3 || '');
             $('#note').val(impegno.note || '');
+            $('#impegno_luogo').val(impegno.luogo || '');
+            $('#impegno_aula').val(impegno.aula || '');
+            $('#impegno_posti').val(impegno.posti || '');
             
             modalInstance.show();
         }
@@ -434,7 +469,10 @@ function salvaImpegno() {
         giorno_extra_1: $('#giorno_extra_1').val() || null,
         giorno_extra_2: $('#giorno_extra_2').val() || null,
         giorno_extra_3: $('#giorno_extra_3').val() || null,
-        note: $('#note').val()
+        note: $('#note').val(),
+        luogo: $('#impegno_luogo').val() || null,
+        aula: $('#impegno_aula').val() || null,
+        posti: $('#impegno_posti').val() || null
     };
     
     const url = id ? `/api/impegni/${id}` : '/api/impegni';

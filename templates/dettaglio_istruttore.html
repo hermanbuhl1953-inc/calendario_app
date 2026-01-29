@@ -55,6 +55,12 @@
 .cella-vuota {
     background-color: white;
 }
+
+.cella-conflitto {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    font-weight: bold;
+}
 .weekend-header {
     background-color: #95a5a6 !important;
     color: white !important;
@@ -475,46 +481,60 @@ for (let mese = 1; mese <= 12; mese++) {
     }
 }
 
-// Popola Calendario
+// Popola Calendario con gestione conflitti
+const occupazioni = {};
 impegni.forEach(imp => {
     const dataInizio = new Date(imp.data_inizio);
     const dataFine = new Date(imp.data_fine);
     
-    // Crea set dei giorni extra per questo impegno
     const giorniExtra = new Set();
     if (imp.giorno_extra_1) giorniExtra.add(imp.giorno_extra_1);
     if (imp.giorno_extra_2) giorniExtra.add(imp.giorno_extra_2);
     if (imp.giorno_extra_3) giorniExtra.add(imp.giorno_extra_3);
     
-    // Per ogni giorno dell'impegno
     let current = new Date(dataInizio);
     while (current <= dataFine) {
         if (current.getFullYear() === anno) {
             const dataGiornoStr = current.toISOString().split('T')[0];
             const mese = current.getMonth() + 1;
             const giorno = current.getDate();
-            const weekday = current.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+            const weekday = current.getDay();
             
-            // Colora solo se Lun-Ven OPPURE è nei giorni extra
             const isLunVen = weekday >= 1 && weekday <= 5;
             const isGiornoExtra = giorniExtra.has(dataGiornoStr);
             
             if (isLunVen || isGiornoExtra) {
-                const cella = $(`#cella-${mese}-${giorno}`);
-                if (cella.length) {
-                    cella.removeClass('cella-vuota');
-                    cella.addClass('cella-giorno');
-                    cella.css('background-color', `#${imp.colore}`);
-                    cella.text(imp.attivita_nome.substring(0, 3));
-                    
-                    // Click handler
-                    cella.off('click').on('click', function() {
-                        mostraDettaglio(imp);
-                    });
-                }
+                const key = `${mese}-${giorno}`;
+                if (!occupazioni[key]) occupazioni[key] = [];
+                occupazioni[key].push(imp);
             }
         }
         current.setDate(current.getDate() + 1);
+    }
+});
+
+Object.entries(occupazioni).forEach(([key, items]) => {
+    const [mese, giorno] = key.split('-');
+    const cella = $(`#cella-${mese}-${giorno}`);
+    if (!cella.length) return;
+    
+    cella.removeClass('cella-vuota');
+    cella.addClass('cella-giorno');
+    
+    if (items.length === 1) {
+        const imp = items[0];
+        cella.css('background-color', `#${imp.colore}`);
+        cella.text(imp.attivita_nome.substring(0, 3));
+        cella.removeClass('cella-conflitto');
+        cella.off('click').on('click', function() {
+            mostraDettaglio(imp);
+        });
+    } else {
+        cella.addClass('cella-conflitto');
+        cella.text(`${items.length}×`);
+        cella.off('click').on('click', function() {
+            mostraConflittoIstruttore(items, mese, giorno);
+        });
     }
 });
 
@@ -525,6 +545,9 @@ function mostraDettaglio(impegno) {
                 ${impegno.attivita_nome}
             </span>
         </p>
+        ${impegno.luogo ? `<p><strong>Luogo:</strong> ${impegno.luogo}</p>` : ''}
+        ${impegno.aula ? `<p><strong>Aula:</strong> ${impegno.aula}</p>` : ''}
+        ${impegno.posti ? `<p><strong>Posti:</strong> ${impegno.posti}</p>` : ''}
         ${impegno.id_corso ? `<p><strong>ID Corso:</strong> ${impegno.id_corso}</p>` : ''}
         <p><strong>Data Inizio:</strong> ${formatData(impegno.data_inizio)}</p>
         <p><strong>Data Fine:</strong> ${formatData(impegno.data_fine)}</p>
@@ -532,6 +555,26 @@ function mostraDettaglio(impegno) {
         ${impegno.note ? `<p><strong>Note:</strong> ${impegno.note}</p>` : ''}
     `;
     
+    $('#modalDettaglioBody').html(html);
+    new bootstrap.Modal($('#modalDettaglio')).show();
+}
+
+function mostraConflittoIstruttore(items, mese, giorno) {
+    const dataStr = `${anno}-${String(mese).padStart(2,'0')}-${String(giorno).padStart(2,'0')}`;
+    const elenco = items.map(imp => `
+        <div class="border rounded p-2 mb-2">
+            <div><strong>${imp.attivita_nome}</strong></div>
+            <div>${formatData(imp.data_inizio)} → ${formatData(imp.data_fine)}</div>
+        </div>
+    `).join('');
+
+    const html = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            Conflitto rilevato il ${formatData(dataStr)}
+        </div>
+        ${elenco}
+    `;
     $('#modalDettaglioBody').html(html);
     new bootstrap.Modal($('#modalDettaglio')).show();
 }

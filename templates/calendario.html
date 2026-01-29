@@ -119,6 +119,12 @@
     background-color: white;
 }
 
+.cella-conflitto {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    font-weight: bold;
+}
+
 .anno-selector {
     margin-bottom: 20px;
 }
@@ -395,7 +401,8 @@ function coloraWeekend() {
 function popolaCalendario() {
     // Per ogni impegno, colora le celle corrispondenti
     const inizioAnno = new Date(anno, 0, 1);
-    
+    const occupazioni = {};
+
     impegni.forEach(impegno => {
         const dataInizio = new Date(impegno.data_inizio);
         const dataFine = new Date(impegno.data_fine);
@@ -410,34 +417,48 @@ function popolaCalendario() {
         if (impegno.giorno_extra_2) giorniExtra.add(impegno.giorno_extra_2);
         if (impegno.giorno_extra_3) giorniExtra.add(impegno.giorno_extra_3);
         
-        // Colora solo giorni lavorativi (Lun-Ven) + giorni extra
+        // Registra occupazioni per giorni lavorativi (Lun-Ven) + giorni extra
         for (let g = Math.max(1, giornoInizio); g <= Math.min(giornoFine, {{ num_giorni }}); g++) {
-            // Calcola data del giorno usando offset corretto
             const dataGiorno = new Date(inizioAnno.getTime() + (g - 1) * 24 * 60 * 60 * 1000);
             const dataGiornoStr = dataGiorno.toISOString().split('T')[0];
-            const weekday = dataGiorno.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+            const weekday = dataGiorno.getDay();
             
-            // Colora solo se:
-            // - È Lun-Ven (weekday 1-5) OPPURE
-            // - È nei giorni extra
             const isLunVen = weekday >= 1 && weekday <= 5;
             const isGiornoExtra = giorniExtra.has(dataGiornoStr);
             
             if (isLunVen || isGiornoExtra) {
-                const cella = $(`#cella-${impegno.istruttore_id}-${g}`);
-                if (cella.length) {
-                    cella.removeClass('cella-vuota');
-                    cella.css('background-color', `#${impegno.colore}`);
-                    cella.text(impegno.attivita_nome.substring(0, 3));
-                    cella.attr('data-impegno-id', impegno.id);
-                    cella.attr('data-id-corso', impegno.id_corso || '');
-                    
-                    // Aggiungi click handler
-                    cella.off('click').on('click', function() {
-                        mostraDettaglioImpegno(impegno);
-                    });
-                }
+                const key = `${impegno.istruttore_id}-${g}`;
+                if (!occupazioni[key]) occupazioni[key] = [];
+                occupazioni[key].push(impegno);
             }
+        }
+    });
+
+    // Renderizza celle in base alle occupazioni
+    Object.entries(occupazioni).forEach(([key, items]) => {
+        const [istrId, g] = key.split('-');
+        const cella = $(`#cella-${istrId}-${g}`);
+        if (!cella.length) return;
+
+        cella.removeClass('cella-vuota');
+
+        if (items.length === 1) {
+            const impegno = items[0];
+            cella.css('background-color', `#${impegno.colore}`);
+            cella.text(impegno.attivita_nome.substring(0, 3));
+            cella.attr('data-impegno-id', impegno.id);
+            cella.attr('data-id-corso', impegno.id_corso || '');
+            cella.removeClass('cella-conflitto');
+            
+            cella.off('click').on('click', function() {
+                mostraDettaglioImpegno(impegno);
+            });
+        } else {
+            cella.addClass('cella-conflitto');
+            cella.text(`${items.length}×`);
+            cella.off('click').on('click', function() {
+                mostraConflittoCalendario(items, parseInt(g, 10));
+            });
         }
     });
     
@@ -478,6 +499,28 @@ function popolaCalendario() {
     });
 }
 
+function mostraConflittoCalendario(items, giornoIndice) {
+    const dataGiorno = new Date(anno, 0, giornoIndice);
+    const dataStr = dataGiorno.toISOString().split('T')[0];
+    const elenco = items.map(imp => `
+        <div class="border rounded p-2 mb-2">
+            <div><strong>${imp.istruttore_nome}</strong></div>
+            <div>${imp.attivita_nome} (${formatData(imp.data_inizio)} → ${formatData(imp.data_fine)})</div>
+        </div>
+    `).join('');
+
+    const html = `
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            Conflitto rilevato il ${formatData(dataStr)}
+        </div>
+        ${elenco}
+    `;
+    $('#modalDettaglioBody').html(html);
+    $('#btnVaiCorso').hide();
+    new bootstrap.Modal($('#modalDettaglio')).show();
+}
+
 function scrollToGiornoFromQuery() {
     const params = new URLSearchParams(window.location.search);
     const dayParam = params.get('day');
@@ -514,6 +557,9 @@ function mostraDettaglioImpegno(impegno) {
                 ${impegno.attivita_nome}
             </span>
         </p>
+        ${impegno.luogo ? `<p><strong>Luogo:</strong> ${impegno.luogo}</p>` : ''}
+        ${impegno.aula ? `<p><strong>Aula:</strong> ${impegno.aula}</p>` : ''}
+        ${impegno.posti ? `<p><strong>Posti:</strong> ${impegno.posti}</p>` : ''}
         ${impegno.id_corso ? `<p><strong>ID Corso:</strong> ${impegno.id_corso}</p>` : ''}
         <p><strong>Data Inizio:</strong> ${formatData(impegno.data_inizio)}</p>
         <p><strong>Data Fine:</strong> ${formatData(impegno.data_fine)}</p>

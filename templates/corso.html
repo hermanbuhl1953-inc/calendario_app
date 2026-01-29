@@ -87,9 +87,9 @@
 
 /* Celle con conflitto (più attività nello stesso giorno per lo stesso istruttore) */
 .cella-conflitto {
-    background-color: #ffe5e5;
+    background-color: #dc3545;
     border: 2px solid #dc3545 !important;
-    color: #222 !important;
+    color: #fff !important;
     position: relative;
 }
 
@@ -345,6 +345,28 @@
                     </div>
                     <div class="row">
                         <div class="col-md-4 mb-3">
+                            <label class="form-label">Luogo</label>
+                            <select class="form-select" id="nuovoLuogo">
+                                <option value="">Seleziona...</option>
+                                <option value="CADORNA">CADORNA</option>
+                                <option value="CAMNAGO">CAMNAGO</option>
+                                <option value="FIORENZA">FIORENZA</option>
+                                <option value="GARIBALDI">GARIBALDI</option>
+                                <option value="NOVATE">NOVATE</option>
+                                <option value="ALTRO">ALTRO</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Aula</label>
+                            <input type="text" class="form-control" id="nuovoAula" placeholder="Es. Aula 3">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Posti</label>
+                            <input type="text" class="form-control" id="nuovoPosti" placeholder="Es. 25">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Data Inizio *</label>
                             <input type="date" class="form-control" id="nuovoDataInizio" required>
                         </div>
@@ -487,6 +509,9 @@ function mostraDettaglio(impegno, data) {
                 ${impegno.attivita_nome}
             </span>
         </p>
+        ${impegno.luogo ? `<p><strong>Luogo:</strong> ${impegno.luogo}</p>` : ''}
+        ${impegno.aula ? `<p><strong>Aula:</strong> ${impegno.aula}</p>` : ''}
+        ${impegno.posti ? `<p><strong>Posti:</strong> ${impegno.posti}</p>` : ''}
         <p><strong>Periodo Impegno:</strong> ${formatData(impegno.data_inizio)} → ${formatData(impegno.data_fine)}</p>
         <p><strong>Giorni Lavorativi:</strong> ${impegno.giorni_lavorativi}</p>
         ${impegno.note ? `<p><strong>Note:</strong> ${impegno.note}</p>` : ''}
@@ -715,7 +740,10 @@ async function salvaNuovoImpegno() {
         data_inizio: dataInizio,
         giorni_lavorativi: Number(giorniLav),
         id_corso: Number('{{ id_corso }}'),
-        note: note || ''
+        note: note || '',
+        luogo: $('#nuovoLuogo').val() || null,
+        aula: $('#nuovoAula').val() || null,
+        posti: $('#nuovoPosti').val() || null
     };
     
     try {
