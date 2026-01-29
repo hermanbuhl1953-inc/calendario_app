@@ -402,7 +402,7 @@ function popolaCalendario() {
     // Per ogni impegno, colora le celle corrispondenti
     const inizioAnno = new Date(anno, 0, 1);
     const occupazioni = {};
-    const sostituziongiorniPerImpegno = {}; // Traccia quali giorni di un impegno sono sostituiti
+    const giorniSostituzioniPerImpegno = {}; // { impegno_id: Set<giorno> }
 
     impegni.forEach(impegno => {
         const dataInizio = new Date(impegno.data_inizio);
@@ -435,26 +435,20 @@ function popolaCalendario() {
         }
     });
 
-    // Traccia quali giorni hanno sostituzioni
+    // Traccia quali giorni SPECIFICI di un impegno hanno sostituzioni
     sostituzioni.forEach(sost => {
         const dataSost = new Date(sost.data_sostituzione);
         const giornoSost = Math.floor((dataSost - inizioAnno) / (1000 * 60 * 60 * 24)) + 1;
         
         if (giornoSost >= 1 && giornoSost <= {{ num_giorni }}) {
-            const keyOrig = `${sost.istruttore_originale_id}-${giornoSost}`;
-            const keySost = `${sost.istruttore_sostituto_id}-${giornoSost}`;
-            
-            // Aggiungi la sostituzione all'impegno originale (per tracking)
-            if (occupazioni[keyOrig]) {
-                occupazioni[keyOrig].forEach(imp => {
-                    if (imp.id === sost.impegno_id) {
-                        if (!imp._sostituzioni) imp._sostituzioni = [];
-                        imp._sostituzioni.push(sost);
-                    }
-                });
+            // Aggiungi questo giorno ai giorni sostituiti di questo impegno
+            if (!giorniSostituzioniPerImpegno[sost.impegno_id]) {
+                giorniSostituzioniPerImpegno[sost.impegno_id] = new Set();
             }
+            giorniSostituzioniPerImpegno[sost.impegno_id].add(giornoSost);
             
-            // Aggiungi il sostituto con marcatura
+            // Aggiungi il sostituto come impegno nella cella del sostituto
+            const keySost = `${sost.istruttore_sostituto_id}-${giornoSost}`;
             const impegnoOriginale = impegni.find(i => i.id === sost.impegno_id);
             if (impegnoOriginale) {
                 const impegnoSost = {...impegnoOriginale, _sostituzione: sost};
@@ -476,9 +470,11 @@ function popolaCalendario() {
             const impegno = items[0];
             cella.css('background-color', `#${impegno.colore}`);
             
-            // Se ha sostituzioni, aggiungi un asterisco per indicarlo
+            // Controlla se QUESTO GIORNO è sostituito
+            const è_giorno_sostituito = giorniSostituzioniPerImpegno[impegno.id]?.has(parseInt(g));
+            
             let testo = impegno.attivita_nome.substring(0, 3);
-            if (impegno._sostituzioni && impegno._sostituzioni.length > 0) {
+            if (è_giorno_sostituito) {
                 testo += '*';
             }
             cella.text(testo);
