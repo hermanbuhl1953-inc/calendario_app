@@ -47,6 +47,30 @@
     opacity: 0.9;
 }
 
+.istruttore-hidden {
+    display: none !important;
+}
+
+.istruttore-nome {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.istruttore-nome:hover {
+    background-color: #3498db !important;
+    color: white !important;
+}
+
+.istruttore-selected {
+    background-color: #2ecc71 !important;
+    color: white !important;
+}
+
+.vista-singola .cella-giorno {
+    height: 40px !important;
+    font-size: 0.8rem !important;
+}
+
 /* Scala di blu per i mesi */
 .mese-header-1 { background-color: #E8F4F8 !important; }
 .mese-header-2 { background-color: #D4E9F7 !important; }
@@ -125,6 +149,9 @@
         </div>
     </div>
     <div class="col-md-6 text-end">
+        <button class="btn btn-warning" id="btnMostraTutti" onclick="mostraTuttiIstruttori()" style="display: none;">
+            <i class="fas fa-users"></i> Mostra Tutti
+        </button>
         <button class="btn btn-info" onclick="mostraLegenda()">
             <i class="fas fa-info-circle"></i> Legenda Colori
         </button>
@@ -169,8 +196,10 @@
                 </thead>
                 <tbody>
                     {% for istruttore in istruttori %}
-                    <tr>
-                        <th>{{ istruttore.nome }}</th>
+                    <tr class="istruttore-row" data-istruttore-id="{{ istruttore.id }}">
+                        <th class="istruttore-nome" onclick="filtraIstruttore({{ istruttore.id }}, '{{ istruttore.nome }}')">
+                            {{ istruttore.nome }}
+                        </th>
                         {% for giorno in range(1, num_giorni + 1) %}
                         <td class="cella-giorno cella-vuota" 
                             data-istruttore="{{ istruttore.nome }}"
@@ -258,12 +287,70 @@ const impegni = {{ impegni|tojson }};
 const sostituzioni = {{ sostituzioni|tojson }};
 const festivi = {{ festivi|tojson }};
 const numGiorni = {{ num_giorni }};
+let istruttoreFiltrato = null;
 
 $(document).ready(function() {
     coloraWeekend();
     popolaCalendario();
     scrollToGiornoFromQuery();
 });
+
+function filtraIstruttore(istruttoreId, nomeIstruttore) {
+    if (istruttoreFiltrato === istruttoreId) {
+        // Se è già filtrato, deseleziona
+        mostraTuttiIstruttori();
+        return;
+    }
+    
+    istruttoreFiltrato = istruttoreId;
+    
+    // Nascondi tutte le righe tranne quella selezionata
+    $('.istruttore-row').each(function() {
+        const id = parseInt($(this).data('istruttore-id'));
+        if (id === istruttoreId) {
+            $(this).show();
+            $(this).find('.istruttore-nome').addClass('istruttore-selected');
+        } else {
+            $(this).addClass('istruttore-hidden');
+            $(this).find('.istruttore-nome').removeClass('istruttore-selected');
+        }
+    });
+    
+    // Ingrandisci visualizzazione
+    $('.calendario-table').addClass('vista-singola');
+    
+    // Mostra bottone "Mostra Tutti"
+    $('#btnMostraTutti').show();
+    
+    // Update alert
+    $('.alert-info').html(`
+        <i class="fas fa-user"></i>
+        <strong>Visualizzazione Singola:</strong> Stai visualizzando solo <strong>${nomeIstruttore}</strong>. 
+        Click su "Mostra Tutti" o sul nome per tornare alla vista completa.
+    `);
+}
+
+function mostraTuttiIstruttori() {
+    istruttoreFiltrato = null;
+    
+    // Mostra tutte le righe
+    $('.istruttore-row').removeClass('istruttore-hidden').show();
+    $('.istruttore-nome').removeClass('istruttore-selected');
+    
+    // Ripristina dimensioni normali
+    $('.calendario-table').removeClass('vista-singola');
+    
+    // Nascondi bottone "Mostra Tutti"
+    $('#btnMostraTutti').hide();
+    
+    // Ripristina alert
+    $('.alert-info').html(`
+        <i class="fas fa-info-circle"></i>
+        <strong>Suggerimento:</strong> Scorri orizzontalmente per vedere tutti i giorni dell'anno. 
+        Click su una cella colorata per vedere i dettagli dell'impegno.
+        <strong>Click sul nome di un istruttore per vedere solo la sua riga.</strong>
+    `);
+}
 
 function coloraWeekend() {
     // Colora gli header dei giorni (numeri nel calendario)
