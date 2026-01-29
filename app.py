@@ -77,6 +77,15 @@ try:
 except Exception as e:
     print(f"⚠️ init_db() error: {e}")
 
+# Ensure requested admin user exists (idempotent)
+try:
+    existing_user = get_utente_by_username('Pasturenzi')
+    if not existing_user:
+        crea_utente('Pasturenzi', '', 'Pasturenzi', '', 'PaolinoCZ', 'Admin')
+        print("✅ Utente admin 'Pasturenzi' creato")
+except Exception as e:
+    print(f"⚠️ Errore creazione utente Pasturenzi: {e}")
+
 
 # ==================== DECORATORI PROTEZIONE ====================
 
