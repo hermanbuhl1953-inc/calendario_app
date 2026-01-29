@@ -33,10 +33,27 @@ def ensure_static_libs():
         'bootstrap/bootstrap.min.css': 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
         'bootstrap/bootstrap.bundle.min.js': 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
         'fontawesome/all.min.css': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-        'fontawesome/fa-solid-900.woff2': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2',
-        'fontawesome/fa-solid-900.ttf': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf',
+        'fontawesome/webfonts/fa-solid-900.woff2': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2',
+        'fontawesome/webfonts/fa-solid-900.ttf': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf',
     }
     
+    # Migrazione: se i font sono nella vecchia posizione, spostali in webfonts/
+    legacy_woff2 = lib_dir / 'fontawesome' / 'fa-solid-900.woff2'
+    legacy_ttf = lib_dir / 'fontawesome' / 'fa-solid-900.ttf'
+    webfonts_dir = lib_dir / 'fontawesome' / 'webfonts'
+    if legacy_woff2.exists() and not (webfonts_dir / 'fa-solid-900.woff2').exists():
+        try:
+            webfonts_dir.mkdir(parents=True, exist_ok=True)
+            legacy_woff2.replace(webfonts_dir / 'fa-solid-900.woff2')
+        except Exception as e:
+            print(f"⚠️ Could not migrate woff2: {e}")
+    if legacy_ttf.exists() and not (webfonts_dir / 'fa-solid-900.ttf').exists():
+        try:
+            webfonts_dir.mkdir(parents=True, exist_ok=True)
+            legacy_ttf.replace(webfonts_dir / 'fa-solid-900.ttf')
+        except Exception as e:
+            print(f"⚠️ Could not migrate ttf: {e}")
+
     for rel_path, url in files_to_check.items():
         file_path = lib_dir / rel_path
         if not file_path.exists():

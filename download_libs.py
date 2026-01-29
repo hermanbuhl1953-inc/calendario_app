@@ -24,11 +24,11 @@ DOWNLOADS = [
     },
     {
         'url': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2',
-        'path': PROJECT_ROOT / 'static' / 'lib' / 'fontawesome' / 'fa-solid-900.woff2'
+        'path': PROJECT_ROOT / 'static' / 'lib' / 'fontawesome' / 'webfonts' / 'fa-solid-900.woff2'
     },
     {
         'url': 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.ttf',
-        'path': PROJECT_ROOT / 'static' / 'lib' / 'fontawesome' / 'fa-solid-900.ttf'
+        'path': PROJECT_ROOT / 'static' / 'lib' / 'fontawesome' / 'webfonts' / 'fa-solid-900.ttf'
     },
 ]
 
