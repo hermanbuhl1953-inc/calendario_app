@@ -1694,8 +1694,17 @@ def api_create_corso():
                 conn.close()
                 return jsonify({'error': f"Attività '{att['attivita_nome']}' non trovata"}), 400
             
-            # Calcola data fine
-            data_fine = calcola_data_fine(att['data_inizio'], att['giorni_lavorativi'])
+            # Colleziona giorni extra
+            giorni_extra = []
+            if att.get('giorno_extra_1'):
+                giorni_extra.append(att['giorno_extra_1'])
+            if att.get('giorno_extra_2'):
+                giorni_extra.append(att['giorno_extra_2'])
+            if att.get('giorno_extra_3'):
+                giorni_extra.append(att['giorno_extra_3'])
+            
+            # Calcola data fine considerando giorni extra
+            data_fine = calcola_data_fine(att['data_inizio'], att['giorni_lavorativi'], giorni_extra if giorni_extra else None)
             
             # Verifica sovrapposizioni
             sovrapposizioni = verifica_sovrapposizione(
@@ -1718,8 +1727,9 @@ def api_create_corso():
             c.execute('''
                 INSERT INTO impegni
                 (id_corso, istruttore_id, attivita_id, data_inizio, giorni_lavorativi,
-                 data_fine, note, luogo, aula, posti, istruttore_riferimento)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 data_fine, note, luogo, aula, posti, istruttore_riferimento,
+                 giorno_extra_1, giorno_extra_2, giorno_extra_3)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data['id_corso'],
                 att['istruttore_id'],
@@ -1731,7 +1741,10 @@ def api_create_corso():
                 data.get('luogo', ''),
                 data.get('aula', ''),
                 data.get('posti', ''),
-                istruttore_rif_id
+                istruttore_rif_id,
+                att.get('giorno_extra_1', ''),
+                att.get('giorno_extra_2', ''),
+                att.get('giorno_extra_3', '')
             ))
             
             impegni_creati.append(c.lastrowid)
