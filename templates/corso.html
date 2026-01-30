@@ -739,7 +739,7 @@ async function salvaNuovoImpegno() {
         attivita_id: Number(attivitaId),
         data_inizio: dataInizio,
         giorni_lavorativi: Number(giorniLav),
-        id_corso: Number('{{ id_corso }}'),
+        id_corso: '{{ id_corso }}',  // Rimane stringa, non convertire a Number!
         note: note || '',
         luogo: $('#nuovoLuogo').val() || null,
         aula: $('#nuovoAula').val() || null,
@@ -787,6 +787,7 @@ async function salvaNuovoImpegno() {
             return;
         }
         
+        // Successo: chiudi modal e ricarica pagina
         new bootstrap.Modal($('#modalNuovoImpegno')).hide();
         location.reload();
     } catch (e) {
