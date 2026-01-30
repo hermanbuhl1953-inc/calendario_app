@@ -615,35 +615,61 @@ function formatData(dataStr) {
 function mostraConflitto(istrId, giornoIndice, items) {
     const dataStr = giorni[giornoIndice - 1].data;
     const istrNome = (istruttoriUnici.find(i => i.id == istrId) || {}).nome || 'Istruttore';
-    const elenco = items.map(({ imp }) => `
-        <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-2">
-            <div>
-                <div><strong>${imp.attivita_nome}</strong> <span class="badge" style="background-color:#${imp.colore}">${imp.attivita_nome.substring(0,10)}</span></div>
-                <small>Impegno: ${formatData(imp.data_inizio)} → ${formatData(imp.data_fine)} (ID ${imp.id})</small>
-            </div>
-            <div class="d-flex gap-2">
-                <select class="form-select form-select-sm" data-role="sost-${imp.id}" style="min-width:180px">
-                    <option value="">Seleziona sostituto…</option>
-                    ${istruttoriUnici.filter(x => x.id != istrId).map(x => `<option value="${x.id}">${x.nome}</option>`).join('')}
-                </select>
-                <button class="btn btn-sm btn-primary" onclick="risolviConSostituzione(${imp.id}, ${istrId}, '${dataStr}')">
-                    Sostituisci questo giorno
-                </button>
-                <div class="input-group input-group-sm" style="width: 180px;">
-                    <span class="input-group-text">Sposta +</span>
-                    <input type="number" class="form-control" min="1" value="1" data-role="shift-${imp.id}">
-                    <button class="btn btn-outline-primary" onclick="risolviConSpostamento(${imp.id})">OK</button>
+    
+    const elenco = items.map(({ imp }, idx) => `
+        <div class="form-check border rounded p-3 mb-2">
+            <input class="form-check-input" type="radio" name="impegnoConflitto" id="impConf${imp.id}" value="${imp.id}" ${idx === 0 ? 'checked' : ''}>
+            <label class="form-check-label w-100" for="impConf${imp.id}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${imp.attivita_nome}</strong> 
+                        <span class="badge" style="background-color:#${imp.colore}">${imp.attivita_nome.substring(0,10)}</span>
+                        <br>
+                        <small class="text-muted">Periodo: ${formatData(imp.data_inizio)} → ${formatData(imp.data_fine)} | Giorni lav: ${imp.giorni_lavorativi}</small>
+                    </div>
                 </div>
-            </div>
+            </label>
         </div>
     `).join('');
 
     const html = `
-        <div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> ${istrNome} ha ${items.length} attività sovrapposte in data ${formatData(dataStr)}.</div>
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i> <strong>Conflitto per ${istrNome}</strong><br>
+            <small>${items.length} attività sovrapposte in data ${formatData(dataStr)}</small>
+        </div>
+        
+        <p class="mb-2"><strong>Impegni in conflitto:</strong></p>
         ${elenco}
-        <div class="mt-2">
-            <a class="btn btn-outline-secondary btn-sm" href="/impegni?istruttore=${encodeURIComponent(istrNome)}&data=${dataStr}">
-                Apri gestione impegni con filtri
+        
+        <hr>
+        
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <label class="form-label"><strong>Data conflitto</strong></label>
+                <input type="date" class="form-control" id="dataConflittoRisolvi" value="${dataStr}" readonly>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><strong>Sostituto</strong></label>
+                <select class="form-select" id="sostitutoConflittoSelect">
+                    <option value="">Seleziona...</option>
+                    ${istruttoriUnici.filter(x => x.id != istrId).map(x => `<option value="${x.id}">${x.nome}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><strong>Sposta impegno di (giorni lavorativi)</strong></label>
+                <input type="number" class="form-control" id="giorniSpostamentoConflitto" min="1" value="1">
+            </div>
+        </div>
+        
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="risolviSpostamentoConflitto(${istrId}, '${dataStr}')">
+                <i class="fas fa-calendar-alt"></i> Sposta Impegno
+            </button>
+            <button class="btn btn-primary" onclick="risolviSostituzioneConflitto(${istrId}, '${dataStr}')">
+                <i class="fas fa-exchange-alt"></i> Sostituisci Giorno
+            </button>
+            <a class="btn btn-outline-secondary" href="/impegni?istruttore=${encodeURIComponent(istrNome)}&data=${dataStr}" target="_blank">
+                <i class="fas fa-external-link-alt"></i> Apri gestione impegni
             </a>
         </div>
     `;
@@ -651,9 +677,40 @@ function mostraConflitto(istrId, giornoIndice, items) {
     new bootstrap.Modal($('#modalConflitto')).show();
 }
 
-async function risolviConSostituzione(impegnoId, istruttoreOriginaleId, dataStr) {
-    const select = document.querySelector(`select[data-role="sost-${impegnoId}"]`);
-    const sostId = select ? select.value : '';
+function risolviSostituzioneConflitto(istrId, dataStr) {
+    const impegnoId = $('input[name="impegnoConflitto"]:checked').val();
+    if (!impegnoId) {
+        alert('Seleziona un impegno da risolvere');
+        return;
+    }
+    
+    const sostitutoId = $('#sostitutoConflittoSelect').val();
+    if (!sostitutoId) {
+        alert('Seleziona un sostituto');
+        return;
+    }
+    
+    risolviConSostituzione(impegnoId, istrId, dataStr, sostitutoId);
+}
+
+function risolviSpostamentoConflitto(istrId, dataStr) {
+    const impegnoId = $('input[name="impegnoConflitto"]:checked').val();
+    if (!impegnoId) {
+        alert('Seleziona un impegno da spostare');
+        return;
+    }
+    
+    const giorni = parseInt($('#giorniSpostamentoConflitto').val());
+    if (!giorni || giorni < 1) {
+        alert('Inserisci un numero valido di giorni (minimo 1)');
+        return;
+    }
+    
+    risolviConSpostamento(impegnoId, giorni);
+}
+
+async function risolviConSostituzione(impegnoId, istruttoreOriginaleId, dataStr, sostitutoIdOverride) {
+    const sostId = sostitutoIdOverride || document.querySelector(`select[data-role="sost-${impegnoId}"]`)?.value;
     if (!sostId) { alert('Seleziona un istruttore sostituto.'); return; }
 
     const body = {
@@ -683,9 +740,8 @@ async function risolviConSostituzione(impegnoId, istruttoreOriginaleId, dataStr)
     }
 }
 
-async function risolviConSpostamento(impegnoId) {
-    const input = document.querySelector(`input[data-role="shift-${impegnoId}"]`);
-    const days = input ? parseInt(input.value || '0', 10) : 0;
+async function risolviConSpostamento(impegnoId, daysOverride) {
+    const days = daysOverride || parseInt(document.querySelector(`input[data-role="shift-${impegnoId}"]`)?.value || '0', 10);
     if (!days || days < 1) { alert('Inserisci un numero di giorni valido'); return; }
     try {
         const res = await fetch(`/api/impegni/${impegnoId}/shift`, {

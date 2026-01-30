@@ -602,6 +602,27 @@ def corso(id_corso):
     data_inizio_corso = min(imp['data_inizio'] for imp in impegni_corso)
     data_fine_corso = max(imp['data_fine'] for imp in impegni_corso)
     
+    # IDs degli istruttori coinvolti nel corso
+    istruttori_ids = list(istruttori_visti)
+    
+    # Recupera assenze (impegni senza id_corso) degli istruttori del corso che ricadono nel periodo
+    if istruttori_ids:
+        placeholders = ','.join('?' * len(istruttori_ids))
+        assenze_raw = conn.execute(f'''
+            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+            FROM impegni i
+            JOIN istruttori ist ON i.istruttore_id = ist.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE i.istruttore_id IN ({placeholders})
+                AND i.id_corso IS NULL
+                AND (i.data_inizio <= ? AND i.data_fine >= ?)
+            ORDER BY i.data_inizio
+        ''', (*istruttori_ids, data_fine_corso, data_inizio_corso)).fetchall()
+        
+        assenze = [dict(row) for row in assenze_raw]
+        # Aggiungi assenze agli impegni del corso per visualizzazione calendario
+        impegni_corso.extend(assenze)
+    
     # Calcola numero di giorni
     from datetime import datetime, timedelta
     inizio = datetime.strptime(data_inizio_corso, '%Y-%m-%d')
