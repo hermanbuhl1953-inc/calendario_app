@@ -915,15 +915,32 @@ def errore():
 
 @app.route('/api/impegni', methods=['GET'])
 def api_get_impegni():
-    """Ottieni lista impegni"""
+    """Ottieni lista impegni, opzionalmente filtrati per data"""
     conn = get_db()
-    impegni = conn.execute('''
-        SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
-        FROM impegni i
-        JOIN istruttori ist ON i.istruttore_id = ist.id
-        JOIN tipi_attivita ta ON i.attivita_id = ta.id
-        ORDER BY i.data_inizio DESC
-    ''').fetchall()
+    
+    # Controlla se c'è un filtro per data
+    data_filtro = request.args.get('data')
+    
+    if data_filtro:
+        # Filtra impegni che includono questa data
+        impegni = conn.execute('''
+            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+            FROM impegni i
+            JOIN istruttori ist ON i.istruttore_id = ist.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE ? BETWEEN i.data_inizio AND i.data_fine
+            ORDER BY i.data_inizio DESC
+        ''', (data_filtro,)).fetchall()
+    else:
+        # Nessun filtro, restituisci tutti
+        impegni = conn.execute('''
+            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+            FROM impegni i
+            JOIN istruttori ist ON i.istruttore_id = ist.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            ORDER BY i.data_inizio DESC
+        ''').fetchall()
+    
     conn.close()
     
     return jsonify([dict(imp) for imp in impegni])

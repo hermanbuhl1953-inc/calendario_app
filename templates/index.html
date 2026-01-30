@@ -48,7 +48,7 @@
             <div class="card-header bg-white border-bottom">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <h5 class="mb-0"><i class="fas fa-list-check text-primary"></i> Impegni di Oggi</h5>
+                        <h5 class="mb-0"><span id="titolo-impegni">📋 Impegni di Oggi</span></h5>
                     </div>
                     <div class="col-md-6">
                         <select class="form-select form-select-sm" id="filtroCategoria" onchange="filtraPerCategoria()">
@@ -79,36 +79,13 @@
         <!-- Conflitti -->
         <div class="card shadow-sm mb-3">
             <div class="card-header bg-danger text-white">
-                <h6 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Conflitti da Risolvere</h6>
+                <h6 class="mb-0">⚠️ Conflitti da Risolvere</h6>
             </div>
             <div class="card-body p-0">
                 <div id="conflitti-lista" class="list-group list-group-flush">
                     <div class="list-group-item text-center text-muted">
                         Caricamento...
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Azioni Rapide -->
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h6 class="mb-0"><i class="fas fa-bolt"></i> Azioni Rapide</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="/impegni" class="btn btn-outline-primary">
-                        <i class="fas fa-plus"></i> Nuovo Impegno
-                    </a>
-                    <a href="/calendario/2026" class="btn btn-outline-success">
-                        <i class="fas fa-calendar"></i> Calendario 2026
-                    </a>
-                    <a href="/istruttori" class="btn btn-outline-info">
-                        <i class="fas fa-users"></i> Gestione Istruttori
-                    </a>
-                    <a href="/export/excel" class="btn btn-outline-secondary">
-                        <i class="fas fa-download"></i> Esporta Excel
-                    </a>
                 </div>
             </div>
         </div>
@@ -136,6 +113,7 @@
 {% block extra_scripts %}
 <script>
 let impegniOggi = []; // Salva tutti gli impegni per filtro
+let dataCorrente = null; // Data attualmente visualizzata
 
 function formatData(dataStr) {
     if (!dataStr) return '';
@@ -195,8 +173,10 @@ function renderImpegni(filtraCategoria = '') {
     impegniFiltrati.forEach(function(imp) {
         const bg = normalizeColor(imp.colore);
         const textColor = getContrastColor(bg);
+        const cursorStyle = imp.id_corso ? 'cursor: pointer;' : '';
+        const onclickAttr = imp.id_corso ? `onclick="window.location.href='/corso/${encodeURIComponent(imp.id_corso)}'"` : '';
         const card = `
-            <div class="list-group-item list-group-item-action" data-categoria="${imp.categoria}">
+            <div class="list-group-item list-group-item-action" data-categoria="${imp.categoria}" style="${cursorStyle}" ${onclickAttr}>
                 <div class="d-flex w-100 justify-content-between align-items-center">
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center mb-1">
@@ -206,14 +186,14 @@ function renderImpegni(filtraCategoria = '') {
                             <strong>${imp.istruttore_nome}</strong>
                         </div>
                         <div class="text-muted small">
-                            ${imp.id_corso ? `<i class="fas fa-graduation-cap"></i> ${imp.id_corso}` : ''}
-                            <span class="ms-2"><i class="fas fa-calendar"></i> ${formatData(imp.data_inizio)} → ${formatData(imp.data_fine)}</span>
-                            ${imp.giorni_lavorativi ? `<span class="ms-2"><i class="fas fa-clock"></i> ${imp.giorni_lavorativi} giorni</span>` : ''}
+                            ${imp.id_corso ? `🎓 ${imp.id_corso}` : ''}
+                            <span class="ms-2">📅 ${formatData(imp.data_inizio)} → ${formatData(imp.data_fine)}</span>
+                            ${imp.giorni_lavorativi ? `<span class="ms-2">⏱️ ${imp.giorni_lavorativi} giorni</span>` : ''}
                         </div>
-                        ${imp.note ? `<div class="small mt-1"><i class="fas fa-sticky-note"></i> ${imp.note}</div>` : ''}
+                        ${imp.note ? `<div class="small mt-1">📝 ${imp.note}</div>` : ''}
                     </div>
                     <div>
-                        ${imp.id_corso ? `<a href="/corso/${encodeURIComponent(imp.id_corso)}" class="btn btn-sm btn-outline-primary"><i class="fas fa-arrow-right"></i></a>` : ''}
+                        ${imp.id_corso ? `<span class="text-primary">➡️</span>` : ''}
                     </div>
                 </div>
             </div>
@@ -263,20 +243,17 @@ $(document).ready(function() {
                 bgClass = 'bg-warning bg-opacity-25';
             }
             
-            const calendarioUrl = `/calendario/${dataGiorno.getFullYear()}?day=${giorno.data}`;
             const card = `
                 <div class="col">
-                    <a class="text-decoration-none" href="${calendarioUrl}">
-                        <div class="card ${bgClass} border-0 shadow-sm">
-                            <div class="card-body p-2 ${textClass}">
-                                <div class="fw-bold">${nomeGiorno}</div>
-                                <div class="fs-5">${dataGiorno.getDate()}</div>
-                                <div class="small">
-                                    ${giorno.count > 0 ? `<span class="badge bg-success">${giorno.count}</span>` : '<span class="text-muted">-</span>'}
-                                </div>
+                    <div class="card ${bgClass} border-0 shadow-sm" style="cursor: pointer;" onclick="mostraImpegniData('${giorno.data}')">
+                        <div class="card-body p-2 ${textClass}">
+                            <div class="fw-bold">${nomeGiorno}</div>
+                            <div class="fs-5">${dataGiorno.getDate()}</div>
+                            <div class="small">
+                                ${giorno.count > 0 ? `<span class="badge bg-success">${giorno.count}</span>` : '<span class="text-muted">-</span>'}
                             </div>
                         </div>
-                    </a>
+                    </div>
                 </div>
             `;
             prossimi.append(card);
@@ -336,6 +313,30 @@ $(document).ready(function() {
 
 let conflittiCache = [];
 let istruttoriCache = [];
+
+// Funzione per mostrare impegni di una data specifica
+function mostraImpegniData(data) {
+    dataCorrente = data;
+    
+    // Aggiorna il titolo
+    const dataObj = new Date(data);
+    const dataFormatted = formatData(data);
+    $('#titolo-impegni').text(`📋 Impegni del ${dataFormatted}`);
+    
+    // Carica impegni per quella data
+    $.getJSON(`/api/impegni?data=${data}`, function(impegni) {
+        impegniOggi = impegni;
+        renderImpegni();
+    }).fail(function() {
+        $('#impegni-oggi-lista').html(`
+            <div class="list-group-item text-center text-danger py-5">
+                <span style="font-size: 2em;">⚠️</span>
+                <h5>Errore Caricamento</h5>
+                <p>Impossibile caricare gli impegni per questa data</p>
+            </div>
+        `);
+    });
+}
 
 function caricaIstruttori() {
     if (istruttoriCache.length > 0) return Promise.resolve(istruttoriCache);
