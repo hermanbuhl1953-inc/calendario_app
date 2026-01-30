@@ -312,6 +312,9 @@ def init_db(drop_auth_tables=False):
         ("FERIE", "F1C40F", "ASSENZA"),
         ("MALATTIA", "E74C3C", "ASSENZA"),
         ("PERMESSO", "F4D03F", "ASSENZA"),
+        ("CONGEDO STRAORDINARIO", "E67E22", "ASSENZA"),
+        ("INFORTUNIO", "C0392B", "ASSENZA"),
+        ("ASSENZA GENERICA", "BDC3C7", "ASSENZA"),
         ("RIUNIONE", "7F8C8D", "ALTRO"),
         ("VARIE", "95A5A6", "ALTRO"),
     ]

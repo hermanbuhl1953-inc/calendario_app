@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Gestione Impegni - Calendario Istruttori{% endblock %}
+{% block title %}Gestione Assenze - Calendario Istruttori{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h2><i class="fas fa-list"></i> Gestione Impegni</h2>
+        <h2>📋 Gestione Assenze Istruttori</h2>
+        <p class="text-muted">Registra ferie, malattie, congedi e altre assenze degli istruttori</p>
         <hr>
     </div>
 </div>
@@ -13,7 +14,7 @@
 <div class="row mb-3">
     <div class="col-12">
         <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#modalImpegno" onclick="nuovoImpegno()">
-            <i class="fas fa-plus"></i> Aggiungi Nuovo Impegno
+            ➕ Aggiungi Nuova Assenza
         </button>
     </div>
 </div>
@@ -139,7 +140,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="modalTitle">Nuovo Impegno</h5>
+                <h5 class="modal-title" id="modalTitle">Nuova Assenza</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -147,13 +148,6 @@
                     <input type="hidden" id="impegno_id">
                     
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">ID Corso (opzionale)</label>
-                            <input type="text" class="form-control" id="id_corso" 
-                                   placeholder="es. 01_25">
-                            <small class="text-muted">Lascia vuoto per impegni singoli (ferie, malattia, etc.)</small>
-                        </div>
-                        
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Istruttore *</label>
                             <select class="form-select" id="istruttore_id" required>
@@ -163,84 +157,59 @@
                                 {% endfor %}
                             </select>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Attività *</label>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo Assenza *</label>
                             <select class="form-select" id="attivita_id" required>
                                 <option value="">Seleziona...</option>
                                 {% for att in attivita %}
                                 <option value="{{ att.id }}" data-colore="{{ att.colore }}">
-                                    {{ att.nome }} ({{ att.categoria }})
+                                    {{ att.nome }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
                     </div>
-
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Luogo</label>
-                            <select class="form-select" id="impegno_luogo">
-                                <option value="">Seleziona...</option>
-                                <option value="CADORNA">CADORNA</option>
-                                <option value="CAMNAGO">CAMNAGO</option>
-                                <option value="FIORENZA">FIORENZA</option>
-                                <option value="GARIBALDI">GARIBALDI</option>
-                                <option value="NOVATE">NOVATE</option>
-                                <option value="ALTRO">ALTRO</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Aula</label>
-                            <input type="text" class="form-control" id="impegno_aula" placeholder="Es. Aula 3">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Posti</label>
-                            <input type="text" class="form-control" id="impegno_posti" placeholder="Es. 25">
-                        </div>
-                    </div>
                     
                     <div class="row">
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Data Inizio *</label>
                             <input type="date" class="form-control" id="data_inizio" required>
                         </div>
                         
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Giorni Lavorativi</label>
                             <input type="number" class="form-control" id="giorni_lavorativi" 
-                                   min="1">
-                            <small class="text-muted">Lascia vuoto se inserisci la Data Fine</small>
+                                   min="1" placeholder="Es. 5">
+                            <small class="text-muted">Oppure usa Data Fine</small>
                         </div>
                         
-
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Data Fine</label>
                             <input type="date" class="form-control" id="data_fine">
-                            <small class="text-muted">Se impostata, i giorni sono calcolati automaticamente (lun-ven)</small>
+                            <small class="text-muted">Calcolo automatico</small>
                         </div>
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">Extra 1</label>
-                            <input type="date" class="form-control" id="giorno_extra_1">
-                            <small class="text-muted">Weekend/Festivo</small>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 mb-2">
+                            <label class="form-label">Giorni Extra (weekend/festivi lavorati)</label>
                         </div>
-                        
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">Extra 2</label>
-                            <input type="date" class="form-control" id="giorno_extra_2">
-                        </div>
-                        
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">Extra 3</label>
-                            <input type="date" class="form-control" id="giorno_extra_3">
+                    </div>
+                    <div id="giorniExtraContainer">
+                        <div class="row mb-2">
+                            <div class="col-md-11">
+                                <input type="date" class="form-control form-control-sm" name="giorno_extra" id="giorno_extra_1">
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-sm btn-success w-100" onclick="aggiungiGiornoExtra()">➕</button>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label">Note</label>
-                        <textarea class="form-control" id="note" rows="3"></textarea>
+                        <textarea class="form-control" id="note" rows="3" placeholder="Eventuali annotazioni..."></textarea>
                     </div>
                 </form>
             </div>
@@ -249,7 +218,7 @@
                     Annulla
                 </button>
                 <button type="button" class="btn btn-primary" onclick="salvaImpegno()">
-                    <i class="fas fa-save"></i> Salva
+                    💾 Salva
                 </button>
             </div>
         </div>
@@ -400,14 +369,44 @@ function resetFiltri() {
     applicaFiltri();
 }
 
+let contatoreiGiorniExtra = 1;
+
+function aggiungiGiornoExtra() {
+    contatoreiGiorniExtra++;
+    const nuovaRiga = `
+        <div class="row mb-2" id="extra_row_${contatoreiGiorniExtra}">
+            <div class="col-md-11">
+                <input type="date" class="form-control form-control-sm" name="giorno_extra" id="giorno_extra_${contatoreiGiorniExtra}">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-danger w-100" onclick="rimuoviGiornoExtra(${contatoreiGiorniExtra})">✖️</button>
+            </div>
+        </div>
+    `;
+    $('#giorniExtraContainer').append(nuovaRiga);
+}
+
+function rimuoviGiornoExtra(id) {
+    $(`#extra_row_${id}`).remove();
+}
+
 function nuovoImpegno() {
-    $('#modalTitle').text('Nuovo Impegno');
+    $('#modalTitle').text('Nuova Assenza');
     $('#formImpegno')[0].reset();
     $('#impegno_id').val('');
     $('#data_fine').val('');
-    $('#impegno_luogo').val('');
-    $('#impegno_aula').val('');
-    $('#impegno_posti').val('');
+    // Reset giorni extra
+    $('#giorniExtraContainer').html(`
+        <div class="row mb-2">
+            <div class="col-md-11">
+                <input type="date" class="form-control form-control-sm" name="giorno_extra" id="giorno_extra_1">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-success w-100" onclick="aggiungiGiornoExtra()">➕</button>
+            </div>
+        </div>
+    `);
+    contatoreiGiorniExtra = 1;
 }
 
 function modificaImpegno(id) {
@@ -415,27 +414,55 @@ function modificaImpegno(id) {
     $.getJSON('/api/impegni', function(data) {
         const impegno = data.find(i => i.id === id);
         if (impegno) {
-            $('#modalTitle').text('Modifica Impegno');
+            $('#modalTitle').text('Modifica Assenza');
             $('#impegno_id').val(impegno.id);
-            $('#id_corso').val(impegno.id_corso || '');
             $('#istruttore_id').val(impegno.istruttore_id);
             $('#attivita_id').val(impegno.attivita_id);
             $('#data_inizio').val(impegno.data_inizio);
             $('#giorni_lavorativi').val(impegno.giorni_lavorativi);
             $('#data_fine').val(impegno.data_fine || '');
-            $('#data_fine').val(impegno.data_fine || '');
-            $('#giorno_extra_1').val(impegno.giorno_extra_1 || '');
-            $('#giorno_extra_2').val(impegno.giorno_extra_2 || '');
-            $('#giorno_extra_3').val(impegno.giorno_extra_3 || '');
             $('#note').val(impegno.note || '');
-            $('#impegno_luogo').val(impegno.luogo || '');
-            $('#impegno_aula').val(impegno.aula || '');
-            $('#impegno_posti').val(impegno.posti || '');
+            
+            // Ricostruisci giorni extra dinamici
+            const giorniExtra = [
+                impegno.giorno_extra_1,
+                impegno.giorno_extra_2,
+                impegno.giorno_extra_3
+            ].filter(g => g);  // Rimuovi vuoti
+            
+            $('#giorniExtraContainer').empty();
+            contatoreiGiorniExtra = 0;
+            
+            if (giorniExtra.length === 0) {
+                // Nessun giorno extra, mostra riga vuota con +
+                aggiungiGiornoExtra();
+            } else {
+                // Aggiungi righe per ogni giorno extra esistente
+                giorniExtra.forEach((giorno, idx) => {
+                    contatoreiGiorniExtra++;
+                    const isLast = idx === giorniExtra.length - 1;
+                    const btnHtml = isLast 
+                        ? `<button type="button" class="btn btn-sm btn-success w-100" onclick="aggiungiGiornoExtra()">➕</button>`
+                        : `<button type="button" class="btn btn-sm btn-danger w-100" onclick="rimuoviGiornoExtra(${contatoreiGiorniExtra})">✖️</button>`;
+                    
+                    const nuovaRiga = `
+                        <div class="row mb-2" id="extra_row_${contatoreiGiorniExtra}">
+                            <div class="col-md-11">
+                                <input type="date" class="form-control form-control-sm" name="giorno_extra" id="giorno_extra_${contatoreiGiorniExtra}" value="${giorno}">
+                            </div>
+                            <div class="col-md-1">
+                                ${btnHtml}
+                            </div>
+                        </div>
+                    `;
+                    $('#giorniExtraContainer').append(nuovaRiga);
+                });
+            }
             
             modalInstance.show();
         }
     }).fail(function() {
-        alert('Errore nel caricare i dati dell\'impegno!');
+        alert('Errore nel caricare i dati dell\'assenza!');
     });
 }
 
@@ -459,20 +486,23 @@ function salvaImpegno() {
         return;
     }
     
+    // Raccogli tutti i giorni extra dinamici
+    const giorniExtra = [];
+    $('input[name="giorno_extra"]').each(function() {
+        const val = $(this).val();
+        if (val) giorniExtra.push(val);
+    });
+    
     const data = {
-        id_corso: $('#id_corso').val(),
         istruttore_id: parseInt(istruttoreId),
         attivita_id: parseInt(attivitaId),
         data_inizio: dataInizio,
         giorni_lavorativi: giorniLavorativi ? parseInt(giorniLavorativi) : null,
         data_fine: dataFine || null,
-        giorno_extra_1: $('#giorno_extra_1').val() || null,
-        giorno_extra_2: $('#giorno_extra_2').val() || null,
-        giorno_extra_3: $('#giorno_extra_3').val() || null,
-        note: $('#note').val(),
-        luogo: $('#impegno_luogo').val() || null,
-        aula: $('#impegno_aula').val() || null,
-        posti: $('#impegno_posti').val() || null
+        giorno_extra_1: giorniExtra[0] || null,
+        giorno_extra_2: giorniExtra[1] || null,
+        giorno_extra_3: giorniExtra[2] || null,
+        note: $('#note').val()
     };
     
     const url = id ? `/api/impegni/${id}` : '/api/impegni';
@@ -484,7 +514,7 @@ function salvaImpegno() {
         contentType: 'application/json',
         data: JSON.stringify(data),
         success: function() {
-            alert('Impegno salvato con successo!');
+            alert('Assenza salvata con successo!');
             location.reload();
         },
         error: function(xhr) {

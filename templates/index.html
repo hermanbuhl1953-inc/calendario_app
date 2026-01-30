@@ -10,7 +10,7 @@
             <div class="card-body text-white py-4">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <h2 class="mb-1"><i class="fas fa-calendar-day"></i> <span id="data-oggi">Caricamento...</span></h2>
+                        <h2 class="mb-1">📅 <span id="data-oggi">Caricamento...</span></h2>
                         <p class="mb-0 opacity-75">Dashboard Operativa Giornaliera</p>
                     </div>
                     <div class="col-md-6">
@@ -66,7 +66,7 @@
                 <div id="impegni-oggi-lista" class="list-group list-group-flush">
                     <!-- Popolato via JS -->
                     <div class="list-group-item text-center text-muted py-5">
-                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <div style="font-size: 2em;">⏳</div>
                         <p>Caricamento impegni...</p>
                     </div>
                 </div>
@@ -97,7 +97,7 @@
     <div class="col-12">
         <div class="card shadow-sm">
             <div class="card-header bg-white border-bottom">
-                <h5 class="mb-0"><i class="fas fa-calendar-week text-success"></i> Prossimi 7 Giorni</h5>
+                <h5 class="mb-0">🗓️ Prossimi 7 Giorni</h5>
             </div>
             <div class="card-body">
                 <div class="row text-center" id="prossimi-giorni">
@@ -163,7 +163,7 @@ function renderImpegni(filtraCategoria = '') {
     if (impegniFiltrati.length === 0) {
         listaImpegni.append(`
             <div class="list-group-item text-center text-muted py-5">
-                <i class="fas fa-filter fa-2x mb-3"></i>
+                <div style="font-size: 2em;">🔍</div>
                 <h5>Nessun impegno trovato${filtraCategoria ? ' per questa categoria' : ''}!</h5>
             </div>
         `);
@@ -261,7 +261,7 @@ $(document).ready(function() {
     }).fail(function() {
         $('#impegni-oggi-lista').html(`
             <div class="list-group-item text-center text-danger py-5">
-                <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                <div style="font-size: 3em;">⚠️</div>
                 <h5>Errore Caricamento</h5>
                 <p>Impossibile caricare i dati della dashboard</p>
             </div>
@@ -276,7 +276,7 @@ $(document).ready(function() {
         if (conflitti.length === 0) {
             listaConflitti.append(`
                 <div class="list-group-item text-center text-success py-3">
-                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <div style="font-size: 2em;">✅</div>
                     <p class="mb-0 small">Nessun conflitto rilevato</p>
                 </div>
             `);
@@ -360,7 +360,7 @@ function apriConflitto(idx) {
 
         const body = `
             <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle"></i>
+                ⚠️
                 Conflitto per <strong>${conf.istruttore}</strong>
             </div>
             <div class="mb-2">
@@ -477,7 +477,7 @@ async function risolviConflittoSpostamento() {
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Risolvi Conflitto</h5>
+                <h5 class="modal-title">⚠️ Risolvi Conflitto</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="modalConflittoHomeBody"></div>

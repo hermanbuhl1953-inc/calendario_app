@@ -55,7 +55,12 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'impegni' %}active{% endif %}" href="/impegni">
-                            📋 Impegni
+                            📋 Assenze
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'vista_corsi' %}active{% endif %}" href="/vista_corsi">
+                            📚 Corsi
                         </a>
                     </li>
                     <li class="nav-item dropdown">
@@ -70,9 +75,6 @@
                             <li><a class="dropdown-item" href="/calendario/2029">2029</a></li>
                             <li><a class="dropdown-item" href="/calendario/2030">2030</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/vista_corsi">
-                                📚 Vista Corsi
-                            </a></li>
                             <li><a class="dropdown-item" href="/nuovo-corso">
                                 ➕ Nuovo Corso
                             </a></li>

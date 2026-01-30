@@ -446,21 +446,26 @@ def index():
 @app.route('/impegni')
 @require_login
 def impegni():
-    """Pagina gestione impegni"""
+    """Pagina gestione assenze istruttori"""
     conn = get_db()
     
     # Lista istruttori
     istruttori = conn.execute('SELECT * FROM istruttori WHERE attivo = 1 ORDER BY nome').fetchall()
     
-    # Lista attività
-    attivita = conn.execute('SELECT * FROM tipi_attivita ORDER BY categoria, nome').fetchall()
+    # Lista attività - SOLO categoria ASSENZA
+    attivita = conn.execute('''
+        SELECT * FROM tipi_attivita 
+        WHERE categoria = 'ASSENZA'
+        ORDER BY nome
+    ''').fetchall()
     
-    # Lista impegni con join
+    # Lista impegni con join - SOLO categoria ASSENZA
     impegni_list = conn.execute('''
         SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
         FROM impegni i
         JOIN istruttori ist ON i.istruttore_id = ist.id
         JOIN tipi_attivita ta ON i.attivita_id = ta.id
+        WHERE ta.categoria = 'ASSENZA'
         ORDER BY i.data_inizio DESC
     ''').fetchall()
     
