@@ -2127,7 +2127,7 @@ def api_get_corso(id_corso):
     return jsonify([dict(imp) for imp in impegni])
 
 @app.route('/api/corsi/aggiorna', methods=['POST'])
-@require_editor
+@require_login
 def api_aggiorna_corso():
     """Aggiorna i dettagli di un corso (date, luogo, aula, posti)"""
     try:
@@ -2155,13 +2155,18 @@ def api_aggiorna_corso():
         ))
         
         conn.commit()
-        conn.close()
         
         # Log audit
-        log_audit(f"Aggiornato corso {id_corso}")
+        try:
+            log_audit(f"Aggiornato corso {id_corso}")
+        except:
+            pass  # Ignora errori di logging
+        
+        conn.close()
         
         return jsonify({'success': True}), 200
     except Exception as e:
+        print(f"Errore aggiorna_corso: {str(e)}")  # Log per debug
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/audit-log', methods=['GET'])

@@ -205,6 +205,66 @@
     </div>
 </div>
 
+<!-- Modal Modifica Impegno -->
+<div class="modal fade" id="modalModificaImpegno" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title">✏️ Modifica Impegno</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formModificaImpegno">
+                    <input type="hidden" id="mod_imp_id">
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">ID Corso</label>
+                            <input type="text" class="form-control" id="mod_imp_id_corso" readonly>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Istruttore *</label>
+                            <select class="form-select" id="mod_imp_istruttore_id" required>
+                                <option value="">Caricamento...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Attività *</label>
+                            <select class="form-select" id="mod_imp_attivita_id" required>
+                                <option value="">Caricamento...</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Data Inizio *</label>
+                            <input type="date" class="form-control" id="mod_imp_data_inizio" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Data Fine</label>
+                            <input type="date" class="form-control" id="mod_imp_data_fine">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Giorni Lavorativi</label>
+                            <input type="number" class="form-control" id="mod_imp_giorni_lavorativi" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Note</label>
+                        <textarea class="form-control" id="mod_imp_note" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-warning" onclick="salvaModificaImpegno()">💾 Salva</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
@@ -254,9 +314,11 @@ function applicaFiltriCorsi() {
 // ============================================================================
 
 let modalModificaInstance = null;
+let modalModificaImpegnoInstance = null;
 
 $(document).ready(function() {
     modalModificaInstance = new bootstrap.Modal($('#modalModificaCorso')[0]);
+    modalModificaImpegnoInstance = new bootstrap.Modal($('#modalModificaImpegno')[0]);
 });
 
 function modificaCorso(idCorso) {
@@ -323,43 +385,89 @@ function modificaCorso(idCorso) {
 }
 
 function modificaImpegno(idImpegno) {
-    // Apri la pagina di modifica impegno (oppure modale separato)
-    // Per ora, rinvia all'utente di usare la pagina Nuovi Corsi
-    alert('Per modificare gli impegni nel dettaglio, usa la pagina "Nuovo Corso"');
+    // Carica i dati dell'impegno E i dropdown di istruttori/attività
+    Promise.all([
+        $.getJSON('/api/impegni'),
+        $.getJSON('/api/istruttori'),
+        $.getJSON('/api/tipi-attivita')
+    ]).then(function([impegni, istruttori, attivita]) {
+        const impegno = impegni.find(i => i.id === idImpegno);
+        if (!impegno) {
+            alert('Impegno non trovato!');
+            return;
+        }
+        
+        // Popola dropdown istruttori
+        const selectIstr = $('#mod_imp_istruttore_id');
+        selectIstr.empty().append('<option value="">Seleziona...</option>');
+        istruttori.forEach(istr => {
+            selectIstr.append(`<option value="${istr.id}">${istr.nome}</option>`);
+        });
+        selectIstr.val(impegno.istruttore_id);
+        
+        // Popola dropdown attività
+        const selectAtt = $('#mod_imp_attivita_id');
+        selectAtt.empty().append('<option value="">Seleziona...</option>');
+        attivita.forEach(att => {
+            selectAtt.append(`<option value="${att.id}">${att.nome}</option>`);
+        });
+        selectAtt.val(impegno.attivita_id);
+        
+        // Popola il resto del form
+        $('#mod_imp_id').val(impegno.id);
+        $('#mod_imp_id_corso').val(impegno.id_corso || '');
+        $('#mod_imp_data_inizio').val(impegno.data_inizio);
+        $('#mod_imp_data_fine').val(impegno.data_fine || '');
+        $('#mod_imp_giorni_lavorativi').val(impegno.giorni_lavorativi || '');
+        $('#mod_imp_note').val(impegno.note || '');
+        
+        // Mostra modale
+        modalModificaImpegnoInstance.show();
+    }).catch(function() {
+        alert('Errore nel caricare i dati!');
+    });
 }
 
-function salvaModificheCorso() {
-    const idCorso = $('#mod_id_corso').val();
-    const dataInizio = $('#mod_data_inizio').val();
-    const dataFine = $('#mod_data_fine').val();
-    const luogo = $('#mod_luogo').val();
-    const aula = $('#mod_aula').val();
-    const posti = $('#mod_posti').val();
+function salvaModificaImpegno() {
+    const impegnoId = $('#mod_imp_id').val();
+    const istruttoreId = $('#mod_imp_istruttore_id').val();
+    const attivitaId = $('#mod_imp_attivita_id').val();
+    const dataInizio = $('#mod_imp_data_inizio').val();
+    const dataFine = $('#mod_imp_data_fine').val();
+    const giorniLavorativi = $('#mod_imp_giorni_lavorativi').val();
+    const note = $('#mod_imp_note').val();
     
-    if (!idCorso || !dataInizio || !dataFine) {
+    if (!istruttoreId || !attivitaId || !dataInizio) {
         alert('Compila i campi obbligatori!');
         return;
     }
     
-    // Aggiorna tutti gli impegni del corso con le nuove date e logistica
+    const data = {
+        istruttore_id: parseInt(istruttoreId),
+        attivita_id: parseInt(attivitaId),
+        data_inizio: dataInizio,
+        data_fine: dataFine || null,
+        giorni_lavorativi: giorniLavorativi ? parseInt(giorniLavorativi) : null,
+        note: note
+    };
+    
     $.ajax({
-        url: '/api/corsi/aggiorna',
-        method: 'POST',
+        url: `/api/impegni/${impegnoId}`,
+        method: 'PUT',
         contentType: 'application/json',
-        data: JSON.stringify({
-            id_corso: idCorso,
-            data_inizio: dataInizio,
-            data_fine: dataFine,
-            luogo: luogo || null,
-            aula: aula || null,
-            posti: posti || null
-        }),
+        data: JSON.stringify(data),
         success: function() {
-            alert('Corso modificato con successo!');
-            location.reload();
+            alert('Impegno modificato con successo!');
+            modalModificaImpegnoInstance.hide();
+            // Ricarica la lista impegni del corso (opzionale)
+            const idCorso = $('#mod_id_corso').val();
+            if (idCorso) {
+                location.reload();
+            }
         },
         error: function(xhr) {
-            alert('Errore nel salvare le modifiche: ' + (xhr.responseJSON?.error || 'Sconosciuto'));
+            const errorMsg = xhr.responseJSON?.error || 'Errore sconosciuto';
+            alert('Errore nel salvare l\'impegno: ' + errorMsg);
         }
     });
 }
