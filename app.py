@@ -970,8 +970,9 @@ def nuovo_corso():
     return render_template('vista_corsi.html', corsi=corsi)
 
 @app.route('/istruttori')
+@require_role('Admin')
 def gestione_istruttori():
-    """Pagina gestione istruttori"""
+    """Pagina gestione istruttori (solo Admin)"""
     conn = get_db()
     
     # Lista tutti gli istruttori (anche disattivati)
@@ -1561,6 +1562,7 @@ def api_get_istruttori():
     return jsonify([dict(i) for i in istruttori])
 
 @app.route('/api/istruttori', methods=['POST'])
+@require_role('Admin')
 def api_create_istruttore():
     """Crea nuovo istruttore (con area se disponibile)"""
     data = request.json
@@ -1598,6 +1600,7 @@ def api_create_istruttore():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/istruttori/<int:istruttore_id>', methods=['PUT'])
+@require_role('Admin')
 def api_update_istruttore(istruttore_id):
     """Aggiorna istruttore con area"""
     data = request.json
@@ -1614,6 +1617,7 @@ def api_update_istruttore(istruttore_id):
     return jsonify({'success': True})
 
 @app.route('/api/istruttori/<int:istruttore_id>/disattiva', methods=['POST'])
+@require_role('Admin')
 def api_disattiva_istruttore(istruttore_id):
     """Disattiva istruttore (pensione)"""
     conn = get_db()
@@ -1624,10 +1628,31 @@ def api_disattiva_istruttore(istruttore_id):
     return jsonify({'success': True})
 
 @app.route('/api/istruttori/<int:istruttore_id>/attiva', methods=['POST'])
+@require_role('Admin')
 def api_attiva_istruttore(istruttore_id):
     """Riattiva istruttore"""
     conn = get_db()
     conn.execute('UPDATE istruttori SET attivo = 1 WHERE id = ?', (istruttore_id,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True})
+
+@app.route('/api/istruttori/<int:istruttore_id>', methods=['DELETE'])
+@require_role('Admin')
+def api_elimina_istruttore(istruttore_id):
+    """Elimina definitivamente istruttore (solo se non ha impegni)"""
+    conn = get_db()
+    
+    # Verifica se ha impegni
+    impegni = conn.execute('SELECT COUNT(*) as count FROM impegni WHERE istruttore_id = ?', (istruttore_id,)).fetchone()
+    
+    if impegni['count'] > 0:
+        conn.close()
+        return jsonify({'success': False, 'error': f'Impossibile eliminare: istruttore ha {impegni["count"]} impegni assegnati'}), 400
+    
+    # Elimina
+    conn.execute('DELETE FROM istruttori WHERE id = ?', (istruttore_id,))
     conn.commit()
     conn.close()
     

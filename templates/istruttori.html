@@ -57,6 +57,9 @@
                                     <button class="btn btn-sm btn-danger" onclick="disattivaIstruttore({{ istr.id }}, '{{ istr.nome }}')">
                                         <i class="fas fa-user-slash"></i> Pensione
                                     </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="eliminaIstruttore({{ istr.id }}, '{{ istr.nome }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% endif %}
@@ -93,6 +96,9 @@
                                     <button class="btn btn-sm btn-success" onclick="attivaIstruttore({{ istr.id }}, '{{ istr.nome }}')">
                                         <i class="fas fa-user-check"></i> Riattiva
                                     </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="eliminaIstruttore({{ istr.id }}, '{{ istr.nome }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </td>
                             </tr>
                             {% else %}
@@ -123,8 +129,9 @@
                 <li><strong>Modifica:</strong> Click su icona matita per modificare nome o email</li>
                 <li><strong>Pensione:</strong> Click "Pensione" per disattivare un istruttore (rimane nel database ma non appare nei menu)</li>
                 <li><strong>Riattiva:</strong> Se serve riattivare un istruttore in pensione, click "Riattiva"</li>
+                <li><strong>Elimina:</strong> Click cestino per eliminare DEFINITIVAMENTE un istruttore (solo se non ha impegni)</li>
             </ul>
-            <p class="mb-0"><strong>Nota:</strong> Gli istruttori disattivati NON appaiono nei menu a tendina quando aggiungi impegni, ma i loro impegni passati rimangono visibili nei calendari.</p>
+            <p class="mb-0"><strong>Nota:</strong> Gli istruttori disattivati NON appaiono nei menu a tendina quando aggiungi impegni, ma i loro impegni passati rimangono visibili nei calendari. Per accedere a questa pagina devi avere ruolo Admin.</p>
         </div>
     </div>
 </div>
@@ -279,6 +286,23 @@ function attivaIstruttore(id, nome) {
             },
             error: function() {
                 alert('Errore nel riattivare l\'istruttore!');
+            }
+        });
+    }
+}
+
+function eliminaIstruttore(id, nome) {
+    if (confirm(`⚠️ ATTENZIONE: Vuoi ELIMINARE DEFINITIVAMENTE l'istruttore "${nome}"?\n\nQuesta operazione NON può essere annullata!\n\nSe l'istruttore ha impegni, l'eliminazione fallirà.`)) {
+        $.ajax({
+            url: `/api/istruttori/${id}`,
+            method: 'DELETE',
+            success: function() {
+                alert('Istruttore eliminato definitivamente!');
+                location.reload();
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Errore sconosciuto';
+                alert('Impossibile eliminare!\n\n' + error);
             }
         });
     }
