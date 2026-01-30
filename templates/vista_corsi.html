@@ -13,12 +13,17 @@
 
 <!-- Barra Ricerca -->
 <div class="row mb-3">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="input-group">
             <span class="input-group-text">🔍</span>
             <input type="text" class="form-control" id="cercaCorso" 
                    placeholder="Cerca per ID corso...">
         </div>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" id="filtroAnno">
+            <option value="">📅 Tutti gli anni</option>
+        </select>
     </div>
     <div class="col-md-3">
         <input type="date" class="form-control" id="filtroDa" placeholder="Data da">
@@ -270,14 +275,44 @@
 {% block extra_scripts %}
 <script>
 $(document).ready(function() {
+    // Popola il select degli anni
+    popolaAnni();
+    
     // Ricerca real-time
-    $('#cercaCorso, #filtroDa, #filtroA').on('input change', function() {
+    $('#cercaCorso, #filtroAnno, #filtroDa, #filtroA').on('input change', function() {
         applicaFiltriCorsi();
     });
 });
 
+function popolaAnni() {
+    const anni = new Set();
+    
+    // Estrai tutti gli anni dalle date nella tabella
+    $('tbody tr').each(function() {
+        const periodo = $(this).find('td:eq(1)').text();
+        const match = periodo.match(/(\d{2}\/\d{2}\/\d{4})/g);
+        if (match && match.length >= 2) {
+            // Estrai anno da dd/mm/yyyy (ultimi 4 caratteri)
+            const annoInizio = match[0].substring(6);
+            const annoFine = match[1].substring(6);
+            anni.add(annoInizio);
+            anni.add(annoFine);
+        }
+    });
+    
+    // Ordina anni in ordine decrescente
+    const anniOrdinati = Array.from(anni).sort().reverse();
+    
+    // Popola select
+    const select = $('#filtroAnno');
+    anniOrdinati.forEach(anno => {
+        select.append(`<option value="${anno}">${anno}</option>`);
+    });
+}
+
 function applicaFiltriCorsi() {
     const ricerca = $('#cercaCorso').val().toLowerCase();
+    const annoFiltro = $('#filtroAnno').val();
     const dataDa = $('#filtroDa').val();
     const dataA = $('#filtroA').val();
     
@@ -293,8 +328,21 @@ function applicaFiltriCorsi() {
             mostra = false;
         }
         
+        // Filtro anno
+        if (annoFiltro && mostra) {
+            const match = periodo.match(/(\d{2}\/\d{2}\/\d{4})/g);
+            if (match && match.length >= 2) {
+                const annoInizio = match[0].substring(6);
+                const annoFine = match[1].substring(6);
+                // Mostra il corso se ha attività nel'anno selezionato
+                if (annoInizio !== annoFiltro && annoFine !== annoFiltro) {
+                    mostra = false;
+                }
+            }
+        }
+        
         // Filtro data: estrai dd/mm/yyyy dal testo e confronta con input ISO
-        if (dataDa || dataA) {
+        if ((dataDa || dataA) && mostra) {
             const match = periodo.match(/(\d{2}\/\d{2}\/\d{4})/g);
             if (match && match.length >= 2) {
                 const toIso = (d) => { const [dd, mm, yyyy] = d.split('/'); return `${yyyy}-${mm}-${dd}`; };
