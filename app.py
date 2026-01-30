@@ -66,10 +66,11 @@ def ensure_static_libs():
                 print(f"⚠️ Could not download {rel_path}: {e}")
 
 # Try to ensure libs on startup (non-blocking)
-try:
-    ensure_static_libs()
-except Exception as e:
-    print(f"⚠️ Static libs setup error: {e}")
+# DISABLED: SSL errors in corporate environment - use CDN directly instead
+# try:
+#     ensure_static_libs()
+# except Exception as e:
+#     print(f"⚠️ Static libs setup error: {e}")
 
 # Initialize DB on startup (ensures tables exist on Render)
 try:
