@@ -31,6 +31,7 @@
                             <tr>
                                 <th>Nome</th>
                                 <th>Email</th>
+                                <th>Area</th>
                                 <th>Azioni</th>
                             </tr>
                         </thead>
@@ -40,6 +41,15 @@
                             <tr>
                                 <td><strong>{{ istr.nome }}</strong></td>
                                 <td>{{ istr.email or '-' }}</td>
+                                <td>
+                                    {% if istr.area %}
+                                    <span class="badge" style="background-color: {{ {'Scorta': '#dc3545', 'Condotta': '#0d6efd', 'Verifica': '#198754', 'Manovra': '#ffc107'}[istr.area] or '#6c757d' }}">
+                                        {{ istr.area }}
+                                    </span>
+                                    {% else %}
+                                    <small class="text-muted">Non assegnata</small>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <button class="btn btn-sm btn-warning" onclick="modificaIstruttore({{ istr.id }})">
                                         <i class="fas fa-edit"></i>
@@ -143,6 +153,18 @@
                         <input type="email" class="form-control" id="email" 
                                placeholder="es. rossi.mario@azienda.it">
                     </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Area di Competenza *</label>
+                        <select class="form-select" id="area" required>
+                            <option value="">Seleziona area...</option>
+                            <option value="Scorta">Scorta</option>
+                            <option value="Condotta">Condotta</option>
+                            <option value="Verifica">Verifica</option>
+                            <option value="Manovra">Manovra</option>
+                        </select>
+                        <small class="text-muted">L'area determina la visibilità per gli utenti istruttori</small>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -182,6 +204,7 @@ function modificaIstruttore(id) {
             $('#istruttore_id').val(istruttore.id);
             $('#nome').val(istruttore.nome);
             $('#email').val(istruttore.email || '');
+            $('#area').val(istruttore.area || '');
             
             modalInstance.show();
         }
@@ -191,15 +214,22 @@ function modificaIstruttore(id) {
 function salvaIstruttore() {
     const id = $('#istruttore_id').val();
     const nome = $('#nome').val().trim();
+    const area = $('#area').val();
     
     if (!nome) {
         alert('Inserire il nome!');
         return;
     }
     
+    if (!area) {
+        alert('Selezionare un\'area!');
+        return;
+    }
+    
     const data = {
         nome: nome,
         email: $('#email').val().trim(),
+        area: area,
         attivo: 1
     };
     

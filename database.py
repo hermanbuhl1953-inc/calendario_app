@@ -497,8 +497,8 @@ def get_utente_by_id(utente_id):
     conn.close()
     return utente
 
-def crea_utente(username, email, nome, cognome, password, ruolo_nome='Viewer'):
-    """Crea nuovo utente"""
+def crea_utente(username, email, nome, cognome, password, ruolo_nome='Viewer', area=None):
+    """Crea nuovo utente con area opzionale"""
     conn = get_db()
     c = conn.cursor()
     
@@ -512,9 +512,9 @@ def crea_utente(username, email, nome, cognome, password, ruolo_nome='Viewer'):
     try:
         password_hash = hash_password(password)
         c.execute('''
-            INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (username, email, nome, cognome, password_hash, ruolo['id']))
+            INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id, area)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (username, email, nome, cognome, password_hash, ruolo['id'], area))
         
         conn.commit()
         utente_id = c.lastrowid
@@ -525,12 +525,12 @@ def crea_utente(username, email, nome, cognome, password, ruolo_nome='Viewer'):
         return {'errore': 'Username già esistente'}
 
 def lista_utenti():
-    """Lista tutti gli utenti"""
+    """Lista tutti gli utenti con area"""
     conn = get_db()
     c = conn.cursor()
     c.execute('''
         SELECT u.id, u.username, u.email, u.nome, u.cognome, r.nome as ruolo, 
-               u.attivo, u.creato_il, u.ultimo_accesso
+               u.area, u.attivo, u.creato_il, u.ultimo_accesso
         FROM utenti u
         LEFT JOIN ruoli r ON u.ruolo_id = r.id
         ORDER BY u.creato_il DESC

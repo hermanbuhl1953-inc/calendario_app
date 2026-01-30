@@ -144,6 +144,58 @@ def require_editor(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def require_supervisor(f):
+    """Decoratore: richiede Supervisor, Editor o Admin (no Viewer)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'utente_id' not in session:
+            return redirect(url_for('login'))
+        
+        utente = get_utente_by_id(session['utente_id'])
+        if not utente or utente['ruolo_nome'] not in ['Admin', 'Editor', 'supervisor']:
+            return render_template('errore.html',
+                messaggio='Non hai i permessi per modificare'), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+def get_user_area_filter():
+    """Restituisce filtro area per l'utente corrente.
+    - Admin/Supervisor: None (vede tutto)
+    - Istruttore con area: area specifica
+    - Istruttore senza area: None (vede tutto temporaneamente)
+    """
+    if 'utente_id' not in session:
+        return None
+    
+    utente = get_utente_by_id(session['utente_id'])
+    if not utente:
+        return None
+    
+    # Admin e Supervisor vedono tutte le aree
+    if utente['ruolo_nome'] in ['Admin', 'supervisor']:
+        return None
+    
+    # Editor e Viewer filtrano per area se assegnata
+    return utente.get('area')
+
+def filter_by_area(query, area_column='area'):
+    """Aggiunge filtro area alla query se necessario.
+    
+    Args:
+        query: Query SQL base
+        area_column: Nome della colonna area (default 'area')
+    
+    Returns:
+        tuple: (query_modificata, parametri_extra)
+    """
+    area = get_user_area_filter()
+    if area:
+        # Utente con area assegnata - filtra
+        return (f"{query} AND {area_column} = ?", [area])
+    else:
+        # Admin/Supervisor o utente senza area - nessun filtro
+        return (query, [])
+
 
 @app.template_filter('itdate')
 def itdate(value):
@@ -449,8 +501,17 @@ def impegni():
     """Pagina gestione assenze istruttori"""
     conn = get_db()
     
-    # Lista istruttori
-    istruttori = conn.execute('SELECT * FROM istruttori WHERE attivo = 1 ORDER BY nome').fetchall()
+    # Filtro area per utente corrente
+    area_filter = get_user_area_filter()
+    
+    # Lista istruttori (filtrata per area se necessario)
+    if area_filter:
+        istruttori = conn.execute(
+            'SELECT * FROM istruttori WHERE attivo = 1 AND area = ? ORDER BY nome',
+            (area_filter,)
+        ).fetchall()
+    else:
+        istruttori = conn.execute('SELECT * FROM istruttori WHERE attivo = 1 ORDER BY nome').fetchall()
     
     # Lista attività - SOLO categoria ASSENZA
     attivita = conn.execute('''
@@ -459,15 +520,25 @@ def impegni():
         ORDER BY nome
     ''').fetchall()
     
-    # Lista impegni con join - SOLO categoria ASSENZA
-    impegni_list = conn.execute('''
-        SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
-        FROM impegni i
-        JOIN istruttori ist ON i.istruttore_id = ist.id
-        JOIN tipi_attivita ta ON i.attivita_id = ta.id
-        WHERE ta.categoria = 'ASSENZA'
-        ORDER BY i.data_inizio DESC
-    ''').fetchall()
+    # Lista impegni con join - SOLO categoria ASSENZA (filtrata per area)
+    if area_filter:
+        impegni_list = conn.execute('''
+            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+            FROM impegni i
+            JOIN istruttori ist ON i.istruttore_id = ist.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE ta.categoria = 'ASSENZA' AND ist.area = ?
+            ORDER BY i.data_inizio DESC
+        ''', (area_filter,)).fetchall()
+    else:
+        impegni_list = conn.execute('''
+            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+            FROM impegni i
+            JOIN istruttori ist ON i.istruttore_id = ist.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE ta.categoria = 'ASSENZA'
+            ORDER BY i.data_inizio DESC
+        ''').fetchall()
     
     conn.close()
     
@@ -481,36 +552,73 @@ def calendario(anno):
     """Pagina calendario per anno specifico"""
     conn = get_db()
     
-    # Lista istruttori
-    istruttori = conn.execute('SELECT * FROM istruttori WHERE attivo = 1 ORDER BY nome').fetchall()
+    # Filtro area per utente corrente
+    area_filter = get_user_area_filter()
     
-    # Impegni dell'anno
-    impegni_anno_raw = conn.execute('''
-        SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
-        FROM impegni i
-        JOIN istruttori ist ON i.istruttore_id = ist.id
-        JOIN tipi_attivita ta ON i.attivita_id = ta.id
-        WHERE 
-            (strftime('%Y', i.data_inizio) = ? OR strftime('%Y', i.data_fine) = ?)
-            OR (i.data_inizio <= ? AND i.data_fine >= ?)
-    ''', (str(anno), str(anno), f"{anno}-12-31", f"{anno}-01-01")).fetchall()
+    # Lista istruttori (filtrata per area)
+    if area_filter:
+        istruttori = conn.execute(
+            'SELECT * FROM istruttori WHERE attivo = 1 AND area = ? ORDER BY nome',
+            (area_filter,)
+        ).fetchall()
+    else:
+        istruttori = conn.execute('SELECT * FROM istruttori WHERE attivo = 1 ORDER BY nome').fetchall()
+    
+    # Impegni dell'anno (filtrati per area)
+    if area_filter:
+        impegni_anno_raw = conn.execute('''
+            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+            FROM impegni i
+            JOIN istruttori ist ON i.istruttore_id = ist.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE 
+                ((strftime('%Y', i.data_inizio) = ? OR strftime('%Y', i.data_fine) = ?)
+                OR (i.data_inizio <= ? AND i.data_fine >= ?))
+                AND ist.area = ?
+        ''', (str(anno), str(anno), f"{anno}-12-31", f"{anno}-01-01", area_filter)).fetchall()
+    else:
+        impegni_anno_raw = conn.execute('''
+            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+            FROM impegni i
+            JOIN istruttori ist ON i.istruttore_id = ist.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE 
+                (strftime('%Y', i.data_inizio) = ? OR strftime('%Y', i.data_fine) = ?)
+                OR (i.data_inizio <= ? AND i.data_fine >= ?)
+        ''', (str(anno), str(anno), f"{anno}-12-31", f"{anno}-01-01")).fetchall()
     
     # Converti Row in dict per JSON serialization
     impegni_anno = [dict(row) for row in impegni_anno_raw]
     
-    # Sostituzioni dell'anno
-    sostituzioni_raw = conn.execute('''
-        SELECT s.*, 
-               io.nome as istruttore_originale, 
-               isost.nome as istruttore_sostituto,
-               i.attivita_id, ta.colore
-        FROM sostituzioni s
-        JOIN istruttori io ON s.istruttore_originale_id = io.id
-        JOIN istruttori isost ON s.istruttore_sostituto_id = isost.id
-        JOIN impegni i ON s.impegno_id = i.id
-        JOIN tipi_attivita ta ON i.attivita_id = ta.id
-        WHERE strftime('%Y', s.data_sostituzione) = ?
-    ''', (str(anno),)).fetchall()
+    # Sostituzioni dell'anno (filtrate per area)
+    if area_filter:
+        sostituzioni_raw = conn.execute('''
+            SELECT s.*, 
+                   io.nome as istruttore_originale, 
+                   isost.nome as istruttore_sostituto,
+                   i.attivita_id, ta.colore
+            FROM sostituzioni s
+            JOIN istruttori io ON s.istruttore_originale_id = io.id
+            JOIN istruttori isost ON s.istruttore_sostituto_id = isost.id
+            JOIN impegni i ON s.impegno_id = i.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE strftime('%Y', s.data_sostituzione) = ? AND io.area = ?
+            ORDER BY s.data_sostituzione
+        ''', (str(anno), area_filter)).fetchall()
+    else:
+        sostituzioni_raw = conn.execute('''
+            SELECT s.*, 
+                   io.nome as istruttore_originale, 
+                   isost.nome as istruttore_sostituto,
+                   i.attivita_id, ta.colore
+            FROM sostituzioni s
+            JOIN istruttori io ON s.istruttore_originale_id = io.id
+            JOIN istruttori isost ON s.istruttore_sostituto_id = isost.id
+            JOIN impegni i ON s.impegno_id = i.id
+            JOIN tipi_attivita ta ON i.attivita_id = ta.id
+            WHERE strftime('%Y', s.data_sostituzione) = ?
+            ORDER BY s.data_sostituzione
+        ''', (str(anno),)).fetchall()
     
     sostituzioni_anno = [dict(row) for row in sostituzioni_raw]
     
@@ -941,38 +1049,61 @@ def errore():
 
 @app.route('/api/impegni', methods=['GET'])
 def api_get_impegni():
-    """Ottieni lista impegni, opzionalmente filtrati per data"""
+    """Ottieni lista impegni, opzionalmente filtrati per data e area"""
     conn = get_db()
+    
+    # Filtro area per utente corrente
+    area_filter = get_user_area_filter()
     
     # Controlla se c'è un filtro per data
     data_filtro = request.args.get('data')
     
     if data_filtro:
         # Filtra impegni che includono questa data
-        impegni = conn.execute('''
-            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
-            FROM impegni i
-            JOIN istruttori ist ON i.istruttore_id = ist.id
-            JOIN tipi_attivita ta ON i.attivita_id = ta.id
-            WHERE ? BETWEEN i.data_inizio AND i.data_fine
-            ORDER BY i.data_inizio DESC
-        ''', (data_filtro,)).fetchall()
+        if area_filter:
+            impegni = conn.execute('''
+                SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+                FROM impegni i
+                JOIN istruttori ist ON i.istruttore_id = ist.id
+                JOIN tipi_attivita ta ON i.attivita_id = ta.id
+                WHERE ? BETWEEN i.data_inizio AND i.data_fine AND ist.area = ?
+                ORDER BY i.data_inizio DESC
+            ''', (data_filtro, area_filter)).fetchall()
+        else:
+            impegni = conn.execute('''
+                SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+                FROM impegni i
+                JOIN istruttori ist ON i.istruttore_id = ist.id
+                JOIN tipi_attivita ta ON i.attivita_id = ta.id
+                WHERE ? BETWEEN i.data_inizio AND i.data_fine
+                ORDER BY i.data_inizio DESC
+            ''', (data_filtro,)).fetchall()
     else:
-        # Nessun filtro, restituisci tutti
-        impegni = conn.execute('''
-            SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
-            FROM impegni i
-            JOIN istruttori ist ON i.istruttore_id = ist.id
-            JOIN tipi_attivita ta ON i.attivita_id = ta.id
-            ORDER BY i.data_inizio DESC
-        ''').fetchall()
+        # Nessun filtro data
+        if area_filter:
+            impegni = conn.execute('''
+                SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+                FROM impegni i
+                JOIN istruttori ist ON i.istruttore_id = ist.id
+                JOIN tipi_attivita ta ON i.attivita_id = ta.id
+                WHERE ist.area = ?
+                ORDER BY i.data_inizio DESC
+            ''', (area_filter,)).fetchall()
+        else:
+            impegni = conn.execute('''
+                SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+                FROM impegni i
+                JOIN istruttori ist ON i.istruttore_id = ist.id
+                JOIN tipi_attivita ta ON i.attivita_id = ta.id
+                ORDER BY i.data_inizio DESC
+            ''').fetchall()
     
     conn.close()
     
     return jsonify([dict(imp) for imp in impegni])
 
 @app.route('/api/impegni', methods=['POST'])
-@require_editor
+@require_supervisor
 def api_create_impegno():
     """Crea nuovo impegno"""
     try:
@@ -1411,15 +1542,26 @@ def api_dashboard():
 
 @app.route('/api/istruttori', methods=['GET'])
 def api_get_istruttori():
-    """Ottieni lista istruttori"""
+    """Ottieni lista istruttori filtrati per area"""
     conn = get_db()
-    istruttori = conn.execute('SELECT * FROM istruttori ORDER BY nome').fetchall()
+    
+    # Filtro area per utente corrente
+    area_filter = get_user_area_filter()
+    
+    if area_filter:
+        istruttori = conn.execute(
+            'SELECT * FROM istruttori WHERE area = ? ORDER BY nome',
+            (area_filter,)
+        ).fetchall()
+    else:
+        istruttori = conn.execute('SELECT * FROM istruttori ORDER BY nome').fetchall()
+    
     conn.close()
     return jsonify([dict(i) for i in istruttori])
 
 @app.route('/api/istruttori', methods=['POST'])
 def api_create_istruttore():
-    """Crea nuovo istruttore"""
+    """Crea nuovo istruttore con area"""
     data = request.json
     
     conn = get_db()
@@ -1427,9 +1569,9 @@ def api_create_istruttore():
     
     try:
         c.execute('''
-            INSERT INTO istruttori (nome, email, attivo)
-            VALUES (?, ?, 1)
-        ''', (data['nome'], data.get('email', '')))
+            INSERT INTO istruttori (nome, email, area, attivo)
+            VALUES (?, ?, ?, 1)
+        ''', (data['nome'], data.get('email', ''), data.get('area')))
         
         istruttore_id = c.lastrowid
         conn.commit()
@@ -1442,15 +1584,15 @@ def api_create_istruttore():
 
 @app.route('/api/istruttori/<int:istruttore_id>', methods=['PUT'])
 def api_update_istruttore(istruttore_id):
-    """Aggiorna istruttore"""
+    """Aggiorna istruttore con area"""
     data = request.json
     
     conn = get_db()
     conn.execute('''
         UPDATE istruttori 
-        SET nome = ?, email = ?, attivo = ?
+        SET nome = ?, email = ?, area = ?, attivo = ?
         WHERE id = ?
-    ''', (data['nome'], data.get('email', ''), data.get('attivo', 1), istruttore_id))
+    ''', (data['nome'], data.get('email', ''), data.get('area'), data.get('attivo', 1), istruttore_id))
     conn.commit()
     conn.close()
     
@@ -1759,7 +1901,7 @@ def api_calcola_data_fine():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/corsi', methods=['POST'])
-@require_editor
+@require_supervisor
 def api_create_corso():
     """Crea un nuovo corso con impegni associati"""
     try:
@@ -2071,7 +2213,7 @@ def api_lista_utenti():
 @app.route('/api/utenti', methods=['POST'])
 @require_role('Admin')
 def api_crea_utente():
-    """Crea nuovo utente"""
+    """Crea nuovo utente con area"""
     try:
         data = request.json
         username = data.get('username', '').strip()
@@ -2080,16 +2222,17 @@ def api_crea_utente():
         cognome = data.get('cognome', '').strip()
         password = data.get('password', '')
         ruolo = data.get('ruolo', 'Viewer')
+        area = data.get('area')  # Può essere None per Admin/Supervisor
         
         if not username or not password or not ruolo:
             return jsonify({'errore': 'Campi obbligatori mancanti'}), 400
         
-        result = crea_utente(username, email, nome, cognome, password, ruolo)
+        result = crea_utente(username, email, nome, cognome, password, ruolo, area)
         if 'errore' in result:
             return jsonify(result), 400
         
         registra_audit(session.get('utente_id'), 'CREA_UTENTE', 'utenti', result['utente_id'],
-                      f'Username: {username}, Ruolo: {ruolo}', request.remote_addr)
+                      f'Username: {username}, Ruolo: {ruolo}, Area: {area or "Tutte"}', request.remote_addr)
         
         return jsonify({'successo': True, 'utente_id': result['utente_id']})
     except Exception as e:
