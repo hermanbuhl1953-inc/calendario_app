@@ -525,16 +525,29 @@ def crea_utente(username, email, nome, cognome, password, ruolo_nome='Viewer', a
         return {'errore': 'Username già esistente'}
 
 def lista_utenti():
-    """Lista tutti gli utenti con area"""
+    """Lista tutti gli utenti (con area se disponibile)"""
     conn = get_db()
     c = conn.cursor()
-    c.execute('''
-        SELECT u.id, u.username, u.email, u.nome, u.cognome, r.nome as ruolo, 
-               u.area, u.attivo, u.creato_il, u.ultimo_accesso
-        FROM utenti u
-        LEFT JOIN ruoli r ON u.ruolo_id = r.id
-        ORDER BY u.creato_il DESC
-    ''')
+    
+    # Try with area column first (after migration)
+    try:
+        c.execute('''
+            SELECT u.id, u.username, u.email, u.nome, u.cognome, r.nome as ruolo, 
+                   u.area, u.attivo, u.creato_il, u.ultimo_accesso
+            FROM utenti u
+            LEFT JOIN ruoli r ON u.ruolo_id = r.id
+            ORDER BY u.creato_il DESC
+        ''')
+    except Exception:
+        # Fallback for databases without area column (before migration)
+        c.execute('''
+            SELECT u.id, u.username, u.email, u.nome, u.cognome, r.nome as ruolo, 
+                   NULL as area, u.attivo, u.creato_il, u.ultimo_accesso
+            FROM utenti u
+            LEFT JOIN ruoli r ON u.ruolo_id = r.id
+            ORDER BY u.creato_il DESC
+        ''')
+    
     utenti = [dict(row) for row in c.fetchall()]
     conn.close()
     return utenti
