@@ -1562,17 +1562,31 @@ def api_get_istruttori():
 
 @app.route('/api/istruttori', methods=['POST'])
 def api_create_istruttore():
-    """Crea nuovo istruttore con area"""
+    """Crea nuovo istruttore (con area se disponibile)"""
     data = request.json
     
     conn = get_db()
     c = conn.cursor()
     
     try:
-        c.execute('''
-            INSERT INTO istruttori (nome, email, area, attivo)
-            VALUES (?, ?, ?, 1)
-        ''', (data['nome'], data.get('email', ''), data.get('area')))
+        # Check if area column exists
+        try:
+            c.execute("SELECT area FROM istruttori LIMIT 1")
+            has_area = True
+        except Exception:
+            has_area = False
+        
+        # Insert with or without area
+        if has_area:
+            c.execute('''
+                INSERT INTO istruttori (nome, email, area, attivo)
+                VALUES (?, ?, ?, 1)
+            ''', (data['nome'], data.get('email', ''), data.get('area')))
+        else:
+            c.execute('''
+                INSERT INTO istruttori (nome, email, attivo)
+                VALUES (?, ?, 1)
+            ''', (data['nome'], data.get('email', '')))
         
         istruttore_id = c.lastrowid
         conn.commit()
