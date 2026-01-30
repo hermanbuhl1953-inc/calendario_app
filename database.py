@@ -498,7 +498,7 @@ def get_utente_by_id(utente_id):
     return utente
 
 def crea_utente(username, email, nome, cognome, password, ruolo_nome='Viewer', area=None):
-    """Crea nuovo utente con area opzionale"""
+    """Crea nuovo utente (con area se disponibile)"""
     conn = get_db()
     c = conn.cursor()
     
@@ -511,10 +511,25 @@ def crea_utente(username, email, nome, cognome, password, ruolo_nome='Viewer', a
     
     try:
         password_hash = hash_password(password)
-        c.execute('''
-            INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id, area)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (username, email, nome, cognome, password_hash, ruolo['id'], area))
+        
+        # Check if area column exists
+        try:
+            c.execute("SELECT area FROM utenti LIMIT 1")
+            has_area = True
+        except Exception:
+            has_area = False
+        
+        # Insert with or without area column
+        if has_area:
+            c.execute('''
+                INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id, area)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (username, email, nome, cognome, password_hash, ruolo['id'], area))
+        else:
+            c.execute('''
+                INSERT INTO utenti (username, email, nome, cognome, password_hash, ruolo_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (username, email, nome, cognome, password_hash, ruolo['id']))
         
         conn.commit()
         utente_id = c.lastrowid
