@@ -436,6 +436,7 @@ function salvaModificaImpegno() {
     const dataFine = $('#mod_imp_data_fine').val();
     const giorniLavorativi = $('#mod_imp_giorni_lavorativi').val();
     const note = $('#mod_imp_note').val();
+    const idCorso = $('#mod_imp_id_corso').val();
     
     if (!istruttoreId || !attivitaId || !dataInizio) {
         alert('Compila i campi obbligatori!');
@@ -459,15 +460,50 @@ function salvaModificaImpegno() {
         success: function() {
             alert('Impegno modificato con successo!');
             modalModificaImpegnoInstance.hide();
-            // Ricarica la lista impegni del corso (opzionale)
-            const idCorso = $('#mod_id_corso').val();
+            // Ricarica i dati del corso
             if (idCorso) {
-                location.reload();
+                modificaCorso(idCorso);
             }
         },
         error: function(xhr) {
             const errorMsg = xhr.responseJSON?.error || 'Errore sconosciuto';
             alert('Errore nel salvare l\'impegno: ' + errorMsg);
+        }
+    });
+}
+
+function salvaModificheCorso() {
+    const idCorso = $('#mod_id_corso').val();
+    const dataInizio = $('#mod_data_inizio').val();
+    const dataFine = $('#mod_data_fine').val();
+    const luogo = $('#mod_luogo').val();
+    const aula = $('#mod_aula').val();
+    const posti = $('#mod_posti').val();
+    
+    if (!idCorso || !dataInizio || !dataFine) {
+        alert('Compila i campi obbligatori!');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/corsi/aggiorna',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            id_corso: idCorso,
+            data_inizio: dataInizio,
+            data_fine: dataFine,
+            luogo: luogo || null,
+            aula: aula || null,
+            posti: posti || null
+        }),
+        success: function() {
+            alert('Corso modificato con successo!');
+            modalModificaInstance.hide();
+            location.reload();
+        },
+        error: function(xhr) {
+            alert('Errore nel salvare le modifiche: ' + (xhr.responseJSON?.error || 'Sconosciuto'));
         }
     });
 }
