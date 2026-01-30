@@ -1736,6 +1736,7 @@ def api_calcola_data_fine():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/corsi', methods=['POST'])
+@require_editor
 def api_create_corso():
     """Crea un nuovo corso con impegni associati"""
     try:
@@ -2107,6 +2108,61 @@ def api_attiva_utente(utente_id):
         return jsonify({'successo': True})
     except Exception as e:
         return jsonify({'errore': str(e)}), 500
+
+@app.route('/api/corsi/<path:id_corso>', methods=['GET'])
+@require_login
+def api_get_corso(id_corso):
+    """Ottieni impegni di un corso"""
+    conn = get_db()
+    impegni = conn.execute('''
+        SELECT i.*, ist.nome as istruttore_nome, ta.nome as attivita_nome, ta.colore
+        FROM impegni i
+        JOIN istruttori ist ON i.istruttore_id = ist.id
+        JOIN tipi_attivita ta ON i.attivita_id = ta.id
+        WHERE i.id_corso = ?
+        ORDER BY i.data_inizio
+    ''', (id_corso,)).fetchall()
+    conn.close()
+    
+    return jsonify([dict(imp) for imp in impegni])
+
+@app.route('/api/corsi/aggiorna', methods=['POST'])
+@require_editor
+def api_aggiorna_corso():
+    """Aggiorna i dettagli di un corso (date, luogo, aula, posti)"""
+    try:
+        data = request.json
+        
+        id_corso = data.get('id_corso')
+        if not id_corso:
+            return jsonify({'error': 'Manca id_corso'}), 400
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Aggiorna tutti gli impegni del corso
+        c.execute('''
+            UPDATE impegni 
+            SET data_inizio = ?, data_fine = ?, luogo = ?, aula = ?, posti = ?
+            WHERE id_corso = ?
+        ''', (
+            data.get('data_inizio'),
+            data.get('data_fine'),
+            data.get('luogo'),
+            data.get('aula'),
+            data.get('posti'),
+            id_corso
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        # Log audit
+        log_audit(f"Aggiornato corso {id_corso}")
+        
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/audit-log', methods=['GET'])
 @require_role('Admin')

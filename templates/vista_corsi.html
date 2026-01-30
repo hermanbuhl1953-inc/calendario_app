@@ -5,8 +5,8 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h2><i class="fas fa-book"></i> Vista Corsi</h2>
-        <p class="text-muted">Seleziona un corso per vedere il calendario dettagliato con tutti gli istruttori coinvolti</p>
+        <h2>📚 Gestione Corsi</h2>
+        <p class="text-muted">Gestisci i corsi, visualizza e modifica i calendari con tutti gli istruttori coinvolti</p>
         <hr>
     </div>
 </div>
@@ -15,7 +15,7 @@
 <div class="row mb-3">
     <div class="col-md-6">
         <div class="input-group">
-            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <span class="input-group-text">🔍</span>
             <input type="text" class="form-control" id="cercaCorso" 
                    placeholder="Cerca per ID corso...">
         </div>
@@ -68,9 +68,12 @@
                             <span class="badge bg-secondary">{{ corso.num_impegni }} impegni</span>
                         </td>
                         <td>
-                            <a href="/corso/{{ corso.id_corso }}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-calendar-alt"></i> Vedi Calendario
+                            <a href="/corso/{{ corso.id_corso }}" class="btn btn-sm btn-primary me-1">
+                                📅 Vedi Calendario
                             </a>
+                            <button class="btn btn-sm btn-success" onclick="modificaCorso('{{ corso.id_corso }}')">
+                                ✏️ Modifica
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -95,13 +98,14 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header bg-info text-white">
-                <i class="fas fa-question-circle"></i> Come funziona?
+                <span style="font-size: 1.2em;">ℹ️</span> Come funziona?
             </div>
             <div class="card-body">
                 <ol>
                     <li>Ogni corso è identificato da un <strong>ID Corso</strong> univoco (es. 01_25, CORSO_A, etc.)</li>
                     <li>Un corso può avere <strong>più impegni</strong> con diversi istruttori e attività</li>
                     <li>Clicca su <strong>"Vedi Calendario"</strong> per vedere il calendario del corso</li>
+                    <li>Clicca su <strong>"Modifica"</strong> per aggiornare i dettagli del corso</li>
                     <li>Nel calendario vedrai:
                         <ul>
                             <li>Tutte le attività del corso giorno per giorno</li>
@@ -114,6 +118,93 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Modifica Corso -->
+<div class="modal fade" id="modalModificaCorso" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">✏️ Modifica Calendario Corso: <span id="corsoTitolo"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <strong>⚠️ Nota:</strong> Da questa pagina puoi modificare i dettagli del corso (date, istruttori, attività, sedi, aule, partecipanti).
+                    Per registrare le assenze degli istruttori, usa la pagina "Assenze".
+                </div>
+                
+                <ul class="nav nav-tabs mb-3" id="tabsModificaCorso" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-info" data-bs-toggle="tab" data-bs-target="#pane-info" type="button">ℹ️ Informazioni Corso</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-impegni" data-bs-toggle="tab" data-bs-target="#pane-impegni" type="button">📋 Impegni</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content">
+                    <!-- TAB 1: Info Corso -->
+                    <div class="tab-pane fade show active" id="pane-info" role="tabpanel">
+                        <form id="formInfoCorso">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">ID Corso *</label>
+                                    <input type="text" class="form-control" id="mod_id_corso" readonly>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Data Inizio *</label>
+                                    <input type="date" class="form-control" id="mod_data_inizio" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Data Fine *</label>
+                                    <input type="date" class="form-control" id="mod_data_fine" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Luogo</label>
+                                    <select class="form-select" id="mod_luogo">
+                                        <option value="">-</option>
+                                        <option value="CADORNA">CADORNA</option>
+                                        <option value="CAMNAGO">CAMNAGO</option>
+                                        <option value="FIORENZA">FIORENZA</option>
+                                        <option value="GARIBALDI">GARIBALDI</option>
+                                        <option value="NOVATE">NOVATE</option>
+                                        <option value="ALTRO">ALTRO</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Aula</label>
+                                    <input type="text" class="form-control" id="mod_aula" placeholder="Es. Aula 3">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">N° Partecipanti</label>
+                                    <input type="number" class="form-control" id="mod_posti" min="1" placeholder="Es. 25">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- TAB 2: Impegni -->
+                    <div class="tab-pane fade" id="pane-impegni" role="tabpanel">
+                        <div class="alert alert-warning">
+                            <small>Gli impegni sono i singoli insegnamenti/esami che compongono il corso. Ogni istruttore ha una o più attività assegnate.</small>
+                        </div>
+                        <div id="listaImpegniModifica">
+                            <p class="text-muted">Caricamento...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" onclick="salvaModificheCorso()">💾 Salva Modifiche</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
@@ -155,6 +246,121 @@ function applicaFiltriCorsi() {
         }
         
         row.toggle(mostra);
+    });
+}
+
+// ============================================================================
+// MODIFICA CORSO
+// ============================================================================
+
+let modalModificaInstance = null;
+
+$(document).ready(function() {
+    modalModificaInstance = new bootstrap.Modal($('#modalModificaCorso')[0]);
+});
+
+function modificaCorso(idCorso) {
+    // Carica i dati del corso
+    $.getJSON(`/api/corsi/${encodeURIComponent(idCorso)}`, function(data) {
+        if (!data || data.length === 0) {
+            alert('Corso non trovato!');
+            return;
+        }
+        
+        const primo = data[0];  // Prendi il primo impegno come reference
+        
+        // Popola il form info
+        $('#corsoTitolo').text(idCorso);
+        $('#mod_id_corso').val(idCorso);
+        $('#mod_data_inizio').val(primo.data_inizio);
+        $('#mod_data_fine').val(primo.data_fine);
+        $('#mod_luogo').val(primo.luogo || '');
+        $('#mod_aula').val(primo.aula || '');
+        $('#mod_posti').val(primo.posti || '');
+        
+        // Popola la lista impegni
+        const lista = $('#listaImpegniModifica');
+        lista.empty();
+        
+        if (data.length === 0) {
+            lista.html('<p class="text-muted">Nessun impegno trovato per questo corso</p>');
+        } else {
+            data.forEach((imp, idx) => {
+                const html = `
+                    <div class="card mb-2">
+                        <div class="card-body p-3">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong>${imp.istruttore_nome || 'N/A'}</strong>
+                                    <br><small class="text-muted">Istruttore</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>${imp.attivita_nome || 'N/A'}</strong>
+                                    <br><small class="text-muted">Attività</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>${imp.data_inizio} → ${imp.data_fine}</strong>
+                                    <br><small class="text-muted">Periodo</small>
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="modificaImpegno(${imp.id})">
+                                        ✏️ Modifica
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                lista.append(html);
+            });
+        }
+        
+        // Apri modale
+        modalModificaInstance.show();
+    }).fail(function(xhr) {
+        alert('Errore nel caricare i dati del corso: ' + (xhr.status || 'Sconosciuto'));
+    });
+}
+
+function modificaImpegno(idImpegno) {
+    // Apri la pagina di modifica impegno (oppure modale separato)
+    // Per ora, rinvia all'utente di usare la pagina Nuovi Corsi
+    alert('Per modificare gli impegni nel dettaglio, usa la pagina "Nuovo Corso"');
+}
+
+function salvaModificheCorso() {
+    const idCorso = $('#mod_id_corso').val();
+    const dataInizio = $('#mod_data_inizio').val();
+    const dataFine = $('#mod_data_fine').val();
+    const luogo = $('#mod_luogo').val();
+    const aula = $('#mod_aula').val();
+    const posti = $('#mod_posti').val();
+    
+    if (!idCorso || !dataInizio || !dataFine) {
+        alert('Compila i campi obbligatori!');
+        return;
+    }
+    
+    // Aggiorna tutti gli impegni del corso con le nuove date e logistica
+    $.ajax({
+        url: '/api/corsi/aggiorna',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            id_corso: idCorso,
+            data_inizio: dataInizio,
+            data_fine: dataFine,
+            luogo: luogo || null,
+            aula: aula || null,
+            posti: posti || null
+        }),
+        success: function() {
+            alert('Corso modificato con successo!');
+            location.reload();
+        },
+        error: function(xhr) {
+            alert('Errore nel salvare le modifiche: ' + (xhr.responseJSON?.error || 'Sconosciuto'));
+        }
     });
 }
 </script>
