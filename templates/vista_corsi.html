@@ -2,6 +2,60 @@
 
 {% block title %}Vista Corsi - Calendario Istruttori{% endblock %}
 
+<style>
+    /* Mobile filter bar optimization */
+    @media (max-width: 768px) {
+        .input-group, .form-control, .form-select {
+            width: 100%;
+            margin-bottom: 0.75rem;
+        }
+        
+        .input-group-text {
+            min-width: 44px;
+        }
+        
+        /* Table buttons stack on mobile */
+        .table td:last-child {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .btn {
+            width: 100%;
+            font-size: 0.9rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        /* Very compact on phones */
+        h2 {
+            font-size: 1.3rem;
+        }
+        
+        .table {
+            font-size: 0.8rem;
+        }
+        
+        .table thead th {
+            font-size: 0.75rem;
+            padding: 0.5rem;
+        }
+        
+        .table td {
+            padding: 0.5rem;
+        }
+    }
+    
+    /* Responsive info card */
+    @media (max-width: 992px) {
+        .card-body ol li {
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+
 {% block content %}
 <div class="row">
     <div class="col-12">

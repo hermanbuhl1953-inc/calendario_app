@@ -2,6 +2,79 @@
 
 {% block title %}Gestione Assenze - Calendario Istruttori{% endblock %}
 
+<style>
+    /* Mobile filters optimization */
+    @media (max-width: 768px) {
+        .card-body .row > [class*="col-"] {
+            width: 100%;
+            margin-bottom: 0.75rem;
+        }
+        
+        .form-label {
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .form-select-sm, .form-control-sm {
+            min-height: 40px;
+            font-size: 0.95rem;
+        }
+        
+        .btn-lg {
+            padding: 0.5rem 1rem;
+            font-size: 0.95rem;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        h2 {
+            font-size: 1.3rem;
+        }
+        
+        /* Stack all filter columns vertically */
+        .col-md-3, .col-md-2 {
+            width: 100%;
+        }
+        
+        /* Make tables horizontally scrollable on phones */
+        .table-responsive {
+            max-height: 70vh;
+        }
+        
+        .table {
+            font-size: 0.75rem;
+        }
+        
+        .table thead th {
+            font-size: 0.7rem;
+            padding: 0.4rem;
+        }
+        
+        .table td {
+            padding: 0.4rem;
+        }
+        
+        /* Table action buttons in mobile */
+        .btn-sm {
+            padding: 0.3rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        /* Hide less critical columns on very small phones */
+        .hide-on-small {
+            display: none !important;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .table th {
+            font-size: 0.85rem;
+        }
+    }
+</style>
+
 {% block content %}
 <div class="row">
     <div class="col-12">

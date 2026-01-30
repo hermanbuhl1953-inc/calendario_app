@@ -207,16 +207,297 @@ body.dark-mode .navbar-brand {
     box-shadow: 0 6px 12px rgba(0,0,0,0.15);
 }
 
-/* Responsive */
+/* ============================================
+   MOBILE & RESPONSIVE DESIGN (Bootstrap Enhancements)
+   ============================================ */
+
+/* Touch-target sizing: 44x44px minimum (WCAG 2.5.5) */
+@media (max-width: 992px) {
+    /* Buttons and links need larger touch targets */
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0.6rem 0.9rem;
+        font-size: 1rem;
+    }
+    
+    a.btn-sm {
+        min-height: 40px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.95rem;
+    }
+    
+    /* Form inputs for better touch usability */
+    .form-control, .form-select {
+        min-height: 44px;
+        font-size: 16px; /* Prevents iOS zoom on focus */
+    }
+    
+    .input-group-text {
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Navbar dropdown items larger for touch */
+    .dropdown-menu {
+        --bs-dropdown-padding-y: 0.75rem;
+    }
+    
+    .dropdown-item {
+        padding: 0.75rem 1rem;
+    }
+}
+
+/* Tablets and small devices (768px and below) */
 @media (max-width: 768px) {
+    /* Viewport sizing */
+    body {
+        font-size: 15px;
+    }
+    
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.25rem; }
+    h4 { font-size: 1.1rem; }
+    h5 { font-size: 1rem; }
+    
+    /* Container padding for tablets */
+    .container, .container-fluid {
+        padding: 10px;
+    }
+    
+    /* Grid column adjustments */
+    .col-md-4 { width: 100%; }
+    .col-md-2 { width: 100%; }
+    .col-md-3 { width: 100%; }
+    .col-md-6 { width: 100%; }
+    
+    /* Calendar table optimization */
     .calendario-table {
-        font-size: 0.6rem;
+        font-size: 0.65rem;
     }
     
     .calendario-table th,
     .calendario-table td {
-        min-width: 12px;
-        padding: 1px;
+        min-width: 25px;
+        padding: 3px 2px;
+        height: 50px;
+    }
+    
+    .calendario-table tbody th {
+        min-width: 80px;
+        font-size: 0.6rem;
+    }
+    
+    .cella-corso {
+        font-size: 0.55rem;
+    }
+    
+    /* Table responsive wrapping */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+        max-height: 400px;
+    }
+    
+    /* Navbar optimization for tablets */
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+    
+    /* Modal sizing */
+    .modal-dialog {
+        margin: 10px auto;
+    }
+    
+    .modal-content {
+        border-radius: 8px;
+    }
+    
+    /* Card and content spacing */
+    .card {
+        margin-bottom: 15px;
+    }
+    
+    /* Badge sizing for tablets */
+    .badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    /* Button group adjustments */
+    .btn-group-vertical > .btn,
+    .btn-group > .btn {
+        min-height: 44px;
+    }
+}
+
+/* Phones (480px and below) */
+@media (max-width: 480px) {
+    /* Aggressive font sizing for phones */
+    body {
+        font-size: 14px;
+    }
+    
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.3rem; }
+    h3 { font-size: 1.1rem; }
+    
+    /* Phone-specific container padding */
+    .container, .container-fluid {
+        padding: 8px;
+    }
+    
+    /* Stack most elements vertically */
+    .row > [class*="col-"] {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Single column for filters on phones */
+    .input-group {
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Calendario table extremely aggressive */
+    .calendario-table {
+        font-size: 0.5rem;
+    }
+    
+    .calendario-table th,
+    .calendario-table td {
+        min-width: 20px;
+        padding: 2px 1px;
+        height: 40px;
+    }
+    
+    .calendario-table tbody th {
+        min-width: 60px;
+        font-size: 0.5rem;
+        padding: 2px 4px;
+    }
+    
+    .cella-corso {
+        font-size: 0.4rem;
+        line-height: 1.1;
+    }
+    
+    .attivita-nome-cella {
+        font-size: 0.45rem;
+        margin-top: 1px;
+    }
+    
+    /* Buttons stack vertically and take full width on phones */
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
+    /* Remove horizontal margin from button groups on phones */
+    .me-1, .ms-1, .mx-1 {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+    }
+    
+    /* Table visibility on phones */
+    .table-responsive {
+        max-height: 300px;
+    }
+    
+    /* Hide less important columns on phones (handled via data-* attributes) */
+    .hide-on-phone {
+        display: none !important;
+    }
+    
+    /* Modal adjustments for phones */
+    .modal-dialog {
+        margin: 5px auto;
+        max-width: calc(100% - 10px);
+    }
+    
+    /* Navbar text truncation on phones */
+    .navbar-brand {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    /* Dropdown menu on phones should be wider */
+    .dropdown-menu {
+        max-width: calc(100vw - 10px);
+        min-width: 100px !important;
+    }
+    
+    /* Adjust badge sizes for readability */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.5rem;
+    }
+    
+    /* Input fields should be tall for fingers */
+    .form-control, .form-select {
+        font-size: 16px;
+        padding: 0.75rem;
+    }
+}
+
+/* Very small phones (under 360px) - iPhone SE and smaller */
+@media (max-width: 360px) {
+    body {
+        font-size: 13px;
+    }
+    
+    .container, .container-fluid {
+        padding: 5px;
+    }
+    
+    .calendario-table {
+        font-size: 0.45rem;
+    }
+    
+    .btn {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.4rem;
+    }
+}
+
+/* Landscape orientation on phones - give more horizontal space */
+@media (max-height: 500px) and (orientation: landscape) {
+    body {
+        font-size: 13px;
+    }
+    
+    .navbar {
+        padding: 0.3rem 0;
+    }
+    
+    .navbar-brand {
+        font-size: 0.9rem;
+    }
+    
+    .btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Reduce vertical spacing in landscape */
+    h1, h2, h3 { margin-bottom: 0.25rem; }
+    
+    .card {
+        margin-bottom: 10px;
+    }
+    
+    /* Make tables more compact in landscape */
+    .calendario-table th,
+    .calendario-table td {
+        height: auto;
+        padding: 2px;
     }
 }
 

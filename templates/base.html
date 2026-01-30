@@ -35,10 +35,14 @@
 <mso:lcf76f155ced4ddcb4097134ff3c332f msdt:dt="string"></mso:lcf76f155ced4ddcb4097134ff3c332f>
 </mso:CustomDocumentProperties>
 </xml><![endif]-->
-</head>
-<body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Calendario">
+    <title>{% block title %}Calendario Istruttori{% endblock %}</title>
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
                 📅 Calendario Istruttori
@@ -125,13 +129,13 @@
                         </ul>
                     </li>
                     {% endif %}
-                    <li class="nav-item d-flex align-items-center ms-lg-2 mt-2 mt-lg-0">
-                        <button id="btnDarkMode" class="btn btn-sm btn-outline-light" type="button">
+                    <li class="nav-item d-flex align-items-center ms-lg-2 mt-1 mt-lg-0">
+                        <button id="btnDarkMode" class="btn btn-sm btn-outline-light" type="button" style="white-space: nowrap;">
                             🌙 Dark Mode
                         </button>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout" title="Logout">
+                    <li class="nav-item mt-1 mt-lg-0">
+                        <a class="nav-link text-truncate" href="/logout" title="Logout">
                             🚪 {{ session.get('username', 'Logout') }}
                         </a>
                     </li>
@@ -146,8 +150,8 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-light text-center py-3 mt-5">
-        <p class="mb-0 text-muted">
+    <footer class="bg-light text-center py-3 mt-5" style="font-size: 0.9rem;">
+        <p class="mb-0 text-muted" style="word-break: break-word;">
             🚂 Per assistenza: 
             <a href="mailto:pianificazione_monitoraggio_accompagnamenti@trenord.it;gestioneabilitazioni@trenord.it">Pianificazione e Monitoraggio Accompagnamenti</a> 
             e 
