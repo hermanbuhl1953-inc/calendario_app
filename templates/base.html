@@ -8,8 +8,8 @@
     <!-- Bootstrap CSS (Local with CDN fallback for Tracking Prevention) -->
     <link href="{{ url_for('static', filename='lib/bootstrap/bootstrap.min.css') }}" rel="stylesheet" onerror="this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css'">
     
-    <!-- Font Awesome (Local with CDN fallback) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='lib/fontawesome/all.min.css') }}" onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'">
+    <!-- Font Awesome (Local with CDN fallback) - Disabled: IT policy blocks webfonts -->
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='lib/fontawesome/all.min.css') }}" onerror="this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'"> -->
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -41,7 +41,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
-                <i class="fas fa-calendar-alt"></i> Calendario Istruttori
+                📅 Calendario Istruttori
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -50,17 +50,17 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/">
-                            <i class="fas fa-home"></i> Home
+                            🏠 Home
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'impegni' %}active{% endif %}" href="/impegni">
-                            <i class="fas fa-list"></i> Impegni
+                            📋 Impegni
                         </a>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="calendariDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-calendar"></i> Calendari
+                            📆 Calendari
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/calendario/2025">2025</a></li>
@@ -71,66 +71,66 @@
                             <li><a class="dropdown-item" href="/calendario/2030">2030</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/vista_corsi">
-                                <i class="fas fa-book"></i> Vista Corsi
+                                📚 Vista Corsi
                             </a></li>
                             <li><a class="dropdown-item" href="/nuovo-corso">
-                                <i class="fas fa-plus-circle"></i> Nuovo Corso
+                                ➕ Nuovo Corso
                             </a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="gestioneDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-cog"></i> Gestione
+                            ⚙️ Gestione
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/vista_istruttori">
-                                <i class="fas fa-user-tie"></i> Vista Istruttori
+                                👨‍🏫 Vista Istruttori
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/istruttori">
-                                <i class="fas fa-users"></i> Istruttori
+                                👥 Istruttori
                             </a></li>
                             <li><a class="dropdown-item" href="/tipi-attivita">
-                                <i class="fas fa-tasks"></i> Tipi Attività
+                                ✅ Tipi Attività
                             </a></li>
                             <li><a class="dropdown-item" href="/festivi">
-                                <i class="fas fa-calendar-times"></i> Festività Custom
+                                🎉 Festività Custom
                             </a></li>
                         </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/report-giorni">
-                            <i class="fas fa-chart-bar"></i> Report Giorni
+                            📊 Report Giorni
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/export/excel">
-                            <i class="fas fa-download"></i> Export Excel
+                            💾 Export Excel
                         </a>
                     </li>
                     {% if session.get('ruolo') == 'Admin' %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-shield-alt"></i> Admin
+                            🔐 Admin
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/admin/utenti">
-                                <i class="fas fa-users-cog"></i> Gestione Utenti
+                                👤 Gestione Utenti
                             </a></li>
                             <li><a class="dropdown-item" href="/admin/audit-log">
-                                <i class="fas fa-history"></i> Audit Log
+                                📝 Audit Log
                             </a></li>
                         </ul>
                     </li>
                     {% endif %}
                     <li class="nav-item d-flex align-items-center ms-lg-2 mt-2 mt-lg-0">
                         <button id="btnDarkMode" class="btn btn-sm btn-outline-light" type="button">
-                            <i class="fas fa-moon"></i> Dark Mode
+                            🌙 Dark Mode
                         </button>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/logout" title="Logout">
-                            <i class="fas fa-sign-out-alt"></i> {{ session.get('username', 'Logout') }}
+                            🚪 {{ session.get('username', 'Logout') }}
                         </a>
                     </li>
                 </ul>
@@ -146,10 +146,10 @@
     <!-- Footer -->
     <footer class="bg-light text-center py-3 mt-5">
         <p class="mb-0 text-muted">
-            <i class="fas fa-train"></i> Per assistenza: 
-            <a href="mailto:pianificazione_monitoraggio_accompagnamenti@trenord.it,gestioneabilitazioni@trenord.it">Pianificazione e Monitoraggio Accompagnamenti</a> 
+            🚂 Per assistenza: 
+            <a href="mailto:pianificazione_monitoraggio_accompagnamenti@trenord.it;gestioneabilitazioni@trenord.it">Pianificazione e Monitoraggio Accompagnamenti</a> 
             e 
-            <a href="mailto:pianificazione_monitoraggio_accompagnamenti@trenord.it,gestioneabilitazioni@trenord.it">Gestione Abilitazioni</a>
+            <a href="mailto:pianificazione_monitoraggio_accompagnamenti@trenord.it;gestioneabilitazioni@trenord.it">Gestione Abilitazioni</a>
         </p>
     </footer>
 
