@@ -729,7 +729,7 @@ async function risolviConSostituzione(impegnoId, istruttoreOriginaleId, dataStr,
         });
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            alert(`Errore: ${res.status} ${err.message || ''}`);
+            alert(`Errore: ${res.status} ${err.messaggio || err.message || err.error || ''}`);
             return;
         }
         // Aggiorna ricaricando la pagina per riflettere nuove sostituzioni

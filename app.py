@@ -1620,10 +1620,12 @@ def api_create_sostituzione():
         if conflitti_sostituto:
             dettagli = [f"{c['attivita_nome']} ({c['data_inizio']} - {c['data_fine']})" for c in conflitti_sostituto]
             conn.close()
+            messaggio = f"L'istruttore sostituto ha già impegni: {', '.join(dettagli)}"
             return jsonify({
                 'success': False,
                 'error': 'Sostituto non disponibile',
-                'messaggio': f"L'istruttore sostituto ha già impegni: {', '.join(dettagli)}"
+                'messaggio': messaggio,
+                'message': messaggio
             }), 409
         
         c.execute('''
