@@ -485,6 +485,11 @@ function salvaModificheCorso() {
         return;
     }
     
+    if (dataInizio > dataFine) {
+        alert('La data di inizio deve essere prima della data di fine!');
+        return;
+    }
+    
     $.ajax({
         url: '/api/corsi/aggiorna',
         method: 'POST',
@@ -500,10 +505,13 @@ function salvaModificheCorso() {
         success: function() {
             alert('Corso modificato con successo!');
             modalModificaInstance.hide();
+            // Ricarica i dati dalla tabella senza ricaricare tutta la pagina
             location.reload();
         },
         error: function(xhr) {
-            alert('Errore nel salvare le modifiche: ' + (xhr.responseJSON?.error || 'Sconosciuto'));
+            const errorMsg = xhr.responseJSON?.error || 'Errore sconosciuto';
+            console.error('Errore aggiorna_corso:', errorMsg);
+            alert('Errore nel salvare le modifiche: ' + errorMsg);
         }
     });
 }

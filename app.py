@@ -2137,17 +2137,44 @@ def api_aggiorna_corso():
         if not id_corso:
             return jsonify({'error': 'Manca id_corso'}), 400
         
+        data_inizio = data.get('data_inizio')
+        data_fine = data.get('data_fine')
+        
+        if not data_inizio or not data_fine:
+            return jsonify({'error': 'Manca data_inizio o data_fine'}), 400
+        
+        # Validazione date
+        if data_inizio > data_fine:
+            return jsonify({'error': 'Data inizio deve essere prima di data fine'}), 400
+        
         conn = get_db()
         c = conn.cursor()
+        
+        # Ottieni tutti gli impegni del corso
+        impegni = c.execute('''
+            SELECT id, data_inizio, data_fine, giorni_lavorativi
+            FROM impegni
+            WHERE id_corso = ?
+        ''', (id_corso,)).fetchall()
+        
+        if not impegni:
+            conn.close()
+            return jsonify({'error': 'Nessun impegno trovato per questo corso'}), 404
+        
+        # Calcola giorni_lavorativi dalle nuove date
+        giorni_totali = giorni_lavorativi_tra(data_inizio, data_fine)
         
         # Aggiorna tutti gli impegni del corso
         c.execute('''
             UPDATE impegni 
-            SET data_inizio = ?, data_fine = ?, luogo = ?, aula = ?, posti = ?
+            SET data_inizio = ?, data_fine = ?, giorni_lavorativi = ?,
+                luogo = ?, aula = ?, posti = ?,
+                modificato_il = CURRENT_TIMESTAMP
             WHERE id_corso = ?
         ''', (
-            data.get('data_inizio'),
-            data.get('data_fine'),
+            data_inizio,
+            data_fine,
+            giorni_totali if giorni_totali > 0 else 1,  # Minimo 1 giorno
             data.get('luogo'),
             data.get('aula'),
             data.get('posti'),
@@ -2158,7 +2185,7 @@ def api_aggiorna_corso():
         
         # Log audit
         try:
-            log_audit(f"Aggiornato corso {id_corso}")
+            log_audit(f"Aggiornato corso {id_corso} (date {data_inizio}-{data_fine}, {giorni_totali} giorni)")
         except:
             pass  # Ignora errori di logging
         
