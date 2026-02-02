@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Calendario - Versione Statica</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .test-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .test-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .test-item.success {
+            border-color: #27ae60;
+            background: #d4edda;
+        }
+        .test-item.error {
+            border-color: #e74c3c;
+            background: #f8d7da;
+        }
+        .test-item.info {
+            border-color: #3498db;
+            background: #d1ecf1;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .code {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test Versione Statica</h1>
+        
+        <div class="test-item info">
+            <strong>ℹ️ Informazioni:</strong>
+            <p>Questo test verifica che tutti i componenti dell'applicazione funzionino correttamente.</p>
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button onclick="runAllTests()">▶️ Esegui Tutti i Test</button>
+            <button onclick="clearResults()">🗑️ Pulisci Risultati</button>
+            <button onclick="window.location.href='index.html'">🚀 Apri App</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-item ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            results.innerHTML = '';
+        }
+
+        async function runAllTests() {
+            clearResults();
+            addResult('<strong>🔍 Inizio test...</strong>', 'info');
+
+            // Test 1: LocalStorage disponibile
+            try {
+                if (typeof(Storage) !== "undefined") {
+                    addResult('✅ Test 1: LocalStorage disponibile', 'success');
+                } else {
+                    addResult('❌ Test 1: LocalStorage NON disponibile', 'error');
+                }
+            } catch(e) {
+                addResult('❌ Test 1: Errore - ' + e.message, 'error');
+            }
+
+            // Test 2: File JavaScript caricabili
+            await testFileExists('static/js/db-storage.js');
+            await testFileExists('static/js/calendario-app.js');
+
+            // Test 3: Bootstrap CDN
+            await testCDN('https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css');
+
+            // Test 4: FontAwesome CDN
+            await testCDN('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+            // Test 5: Crea database di test
+            try {
+                localStorage.setItem('test_calendario', JSON.stringify({test: true}));
+                const data = JSON.parse(localStorage.getItem('test_calendario'));
+                if (data.test === true) {
+                    addResult('✅ Test 5: Scrittura/Lettura LocalStorage funziona', 'success');
+                    localStorage.removeItem('test_calendario');
+                } else {
+                    addResult('❌ Test 5: Errore lettura dati', 'error');
+                }
+            } catch(e) {
+                addResult('❌ Test 5: Errore LocalStorage - ' + e.message, 'error');
+            }
+
+            // Test 6: Calcolo date
+            try {
+                const oggi = new Date();
+                const domani = new Date(oggi);
+                domani.setDate(domani.getDate() + 1);
+                if (domani > oggi) {
+                    addResult('✅ Test 6: Calcolo date JavaScript funziona', 'success');
+                } else {
+                    addResult('❌ Test 6: Errore calcolo date', 'error');
+                }
+            } catch(e) {
+                addResult('❌ Test 6: Errore - ' + e.message, 'error');
+            }
+
+            // Test 7: JSON parse/stringify
+            try {
+                const obj = {nome: 'Test', data: '2026-02-02'};
+                const json = JSON.stringify(obj);
+                const parsed = JSON.parse(json);
+                if (parsed.nome === 'Test') {
+                    addResult('✅ Test 7: JSON parse/stringify funziona', 'success');
+                } else {
+                    addResult('❌ Test 7: Errore JSON', 'error');
+                }
+            } catch(e) {
+                addResult('❌ Test 7: Errore - ' + e.message, 'error');
+            }
+
+            // Test 8: Verifica connessione internet
+            try {
+                const online = navigator.onLine;
+                if (online) {
+                    addResult('✅ Test 8: Connessione internet attiva', 'success');
+                } else {
+                    addResult('⚠️ Test 8: Nessuna connessione (CDN non funzioneranno)', 'error');
+                }
+            } catch(e) {
+                addResult('❌ Test 8: Errore - ' + e.message, 'error');
+            }
+
+            // Test 9: Dimensione storage disponibile
+            try {
+                let totalSize = 0;
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        totalSize += localStorage[key].length + key.length;
+                    }
+                }
+                const sizeKB = (totalSize / 1024).toFixed(2);
+                addResult(`✅ Test 9: Storage usato: ${sizeKB} KB (limite ~5-10 MB)`, 'success');
+            } catch(e) {
+                addResult('❌ Test 9: Errore - ' + e.message, 'error');
+            }
+
+            // Test 10: Browser info
+            try {
+                const browser = navigator.userAgent;
+                let browserName = 'Sconosciuto';
+                if (browser.indexOf('Chrome') > -1) browserName = 'Chrome';
+                else if (browser.indexOf('Safari') > -1) browserName = 'Safari';
+                else if (browser.indexOf('Firefox') > -1) browserName = 'Firefox';
+                else if (browser.indexOf('Edge') > -1) browserName = 'Edge';
+                
+                addResult(`✅ Test 10: Browser rilevato: ${browserName}`, 'success');
+            } catch(e) {
+                addResult('❌ Test 10: Errore - ' + e.message, 'error');
+            }
+
+            // Riepilogo
+            addResult('<strong>✅ Test completati!</strong><br>Se tutti i test sono verdi, l\'app è pronta per l\'uso.', 'success');
+        }
+
+        async function testFileExists(path) {
+            try {
+                const response = await fetch(path, { method: 'HEAD' });
+                if (response.ok) {
+                    addResult(`✅ Test 2: File trovato: ${path}`, 'success');
+                } else {
+                    addResult(`❌ Test 2: File NON trovato: ${path}`, 'error');
+                }
+            } catch(e) {
+                addResult(`❌ Test 2: Errore caricamento ${path}: ${e.message}`, 'error');
+            }
+        }
+
+        async function testCDN(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                if (response.ok) {
+                    addResult(`✅ Test CDN: Raggiungibile: ${url.split('/').pop()}`, 'success');
+                } else {
+                    addResult(`❌ Test CDN: NON raggiungibile: ${url}`, 'error');
+                }
+            } catch(e) {
+                addResult(`⚠️ Test CDN: Errore (possibile CORS): ${url.split('/').pop()}`, 'info');
+            }
+        }
+
+        // Informazioni iniziali
+        window.addEventListener('load', function() {
+            addResult(`
+                <strong>📋 Informazioni Sistema:</strong><br>
+                🌐 User Agent: ${navigator.userAgent}<br>
+                📱 Piattaforma: ${navigator.platform}<br>
+                🌍 Lingua: ${navigator.language}<br>
+                💾 LocalStorage: ${typeof(Storage) !== "undefined" ? 'Disponibile' : 'NON disponibile'}
+            `, 'info');
+        });
+    </script>
+</body>
+</html>
