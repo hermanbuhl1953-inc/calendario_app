@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Multi-Utente - Simulazione 3 Browser</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        .browser-window {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .browser-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+        }
+        .browser-dots {
+            display: flex;
+            gap: 8px;
+            margin-right: 15px;
+        }
+        .browser-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .browser-dot.red { background: #ff5f56; }
+        .browser-dot.yellow { background: #ffbd2e; }
+        .browser-dot.green { background: #27c93f; }
+        .browser-content {
+            padding: 20px;
+        }
+        .activity-log {
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        .sync-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .sync-indicator.synced { background: #27c93f; }
+        .sync-indicator.syncing { background: #ffbd2e; animation: pulse 1s infinite; }
+        .sync-indicator.offline { background: #ff5f56; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .data-table {
+            font-size: 14px;
+        }
+        .badge-user1 { background: #667eea; }
+        .badge-user2 { background: #764ba2; }
+        .badge-user3 { background: #f093fb; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="text-center text-white mb-4">
+            🌐 Demo Multi-Utente SharePoint
+        </h1>
+        <p class="text-center text-white mb-5">
+            Questa demo simula 3 browser che accedono allo stesso database SharePoint
+        </p>
+
+        <div class="row">
+            <!-- Browser 1 -->
+            <div class="col-md-4">
+                <div class="browser-window">
+                    <div class="browser-header">
+                        <div class="browser-dots">
+                            <div class="browser-dot red"></div>
+                            <div class="browser-dot yellow"></div>
+                            <div class="browser-dot green"></div>
+                        </div>
+                        <strong>👤 User 1 - Mario (Milano)</strong>
+                    </div>
+                    <div class="browser-content">
+                        <div class="mb-3">
+                            <span class="sync-indicator synced" id="sync1"></span>
+                            <span id="status1">Connesso</span>
+                        </div>
+                        
+                        <h6>Crea Istruttore:</h6>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="nome1" placeholder="Nome">
+                            <button class="btn btn-primary" onclick="addIstruttore(1)">
+                                Aggiungi
+                            </button>
+                        </div>
+
+                        <h6>Dati Visibili:</h6>
+                        <table class="table table-sm data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Da</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data1"></tbody>
+                        </table>
+
+                        <h6>Log Attività:</h6>
+                        <div class="activity-log" id="log1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Browser 2 -->
+            <div class="col-md-4">
+                <div class="browser-window">
+                    <div class="browser-header">
+                        <div class="browser-dots">
+                            <div class="browser-dot red"></div>
+                            <div class="browser-dot yellow"></div>
+                            <div class="browser-dot green"></div>
+                        </div>
+                        <strong>👤 User 2 - Luigi (Roma)</strong>
+                    </div>
+                    <div class="browser-content">
+                        <div class="mb-3">
+                            <span class="sync-indicator synced" id="sync2"></span>
+                            <span id="status2">Connesso</span>
+                        </div>
+                        
+                        <h6>Crea Istruttore:</h6>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="nome2" placeholder="Nome">
+                            <button class="btn btn-primary" onclick="addIstruttore(2)">
+                                Aggiungi
+                            </button>
+                        </div>
+
+                        <h6>Dati Visibili:</h6>
+                        <table class="table table-sm data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Da</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data2"></tbody>
+                        </table>
+
+                        <h6>Log Attività:</h6>
+                        <div class="activity-log" id="log2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Browser 3 -->
+            <div class="col-md-4">
+                <div class="browser-window">
+                    <div class="browser-header">
+                        <div class="browser-dots">
+                            <div class="browser-dot red"></div>
+                            <div class="browser-dot yellow"></div>
+                            <div class="browser-dot green"></div>
+                        </div>
+                        <strong>👤 User 3 - Anna (Torino)</strong>
+                    </div>
+                    <div class="browser-content">
+                        <div class="mb-3">
+                            <span class="sync-indicator synced" id="sync3"></span>
+                            <span id="status3">Connesso</span>
+                        </div>
+                        
+                        <h6>Crea Istruttore:</h6>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="nome3" placeholder="Nome">
+                            <button class="btn btn-primary" onclick="addIstruttore(3)">
+                                Aggiungi
+                            </button>
+                        </div>
+
+                        <h6>Dati Visibili:</h6>
+                        <table class="table table-sm data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Da</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data3"></tbody>
+                        </table>
+
+                        <h6>Log Attività:</h6>
+                        <div class="activity-log" id="log3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <h5>🎯 Come Funziona la Demo:</h5>
+                    <ol>
+                        <li>Ogni colonna simula un browser diverso</li>
+                        <li>Aggiungi un nome in User 1 → click "Aggiungi"</li>
+                        <li>Dopo 2 secondi (simulazione auto-refresh), User 2 e User 3 vedono lo stesso dato!</li>
+                        <li>Prova ad aggiungere da User 2 → tutti lo vedranno</li>
+                        <li><strong>Questo è esattamente ciò che succede con SharePoint!</strong></li>
+                    </ol>
+                    <p class="mb-0">
+                        <strong>Differenza con LocalStorage:</strong> Se usassi LocalStorage, ogni colonna avrebbe dati SEPARATI!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simula database SharePoint condiviso
+        let sharedDatabase = [];
+        let nextId = 1;
+
+        const users = {
+            1: { name: 'Mario', badge: 'badge-user1' },
+            2: { name: 'Luigi', badge: 'badge-user2' },
+            3: { name: 'Anna', badge: 'badge-user3' }
+        };
+
+        // Simula aggiunta dati (come chiamata SharePoint REST API)
+        function addIstruttore(userId) {
+            const nome = document.getElementById(`nome${userId}`).value;
+            if (!nome) {
+                alert('Inserisci un nome!');
+                return;
+            }
+
+            // Simula sync indicator "syncing"
+            setSyncStatus(userId, 'syncing');
+            addLog(userId, `📤 Invio dati a SharePoint...`);
+
+            // Simula latency API SharePoint (300-500ms)
+            setTimeout(() => {
+                const newItem = {
+                    id: nextId++,
+                    nome: nome,
+                    createdBy: userId,
+                    createdByName: users[userId].name,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+
+                sharedDatabase.push(newItem);
+                
+                addLog(userId, `✅ "${nome}" salvato in SharePoint!`);
+                setSyncStatus(userId, 'synced');
+                
+                // Pulisci input
+                document.getElementById(`nome${userId}`).value = '';
+                
+                // Refresh immediato per utente corrente
+                refreshData(userId);
+                
+                // Simula auto-refresh per altri utenti dopo 2 secondi
+                setTimeout(() => {
+                    for (let i = 1; i <= 3; i++) {
+                        if (i !== userId) {
+                            autoRefresh(i, newItem);
+                        }
+                    }
+                }, 2000);
+
+            }, 400); // Simula latency
+        }
+
+        // Simula auto-refresh (come in db-sharepoint.js ogni 30 sec)
+        function autoRefresh(userId, newItem) {
+            setSyncStatus(userId, 'syncing');
+            addLog(userId, `🔄 Auto-refresh da SharePoint...`);
+            
+            setTimeout(() => {
+                refreshData(userId);
+                addLog(userId, `✅ Ricevuto "${newItem.nome}" da ${newItem.createdByName}!`);
+                setSyncStatus(userId, 'synced');
+                
+                // Highlight nuovo item
+                highlightNew(userId, newItem.id);
+            }, 300);
+        }
+
+        // Aggiorna visualizzazione dati
+        function refreshData(userId) {
+            const tbody = document.getElementById(`data${userId}`);
+            tbody.innerHTML = '';
+            
+            sharedDatabase.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.id = `row-${userId}-${item.id}`;
+                tr.innerHTML = `
+                    <td>${item.nome}</td>
+                    <td><span class="badge ${users[item.createdBy].badge}">${item.createdByName}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Highlight nuovo item
+        function highlightNew(userId, itemId) {
+            const row = document.getElementById(`row-${userId}-${itemId}`);
+            if (row) {
+                row.style.background = '#d4edda';
+                setTimeout(() => {
+                    row.style.transition = 'background 1s';
+                    row.style.background = '';
+                }, 2000);
+            }
+        }
+
+        // Gestione sync indicator
+        function setSyncStatus(userId, status) {
+            const indicator = document.getElementById(`sync${userId}`);
+            const statusText = document.getElementById(`status${userId}`);
+            
+            indicator.className = 'sync-indicator';
+            
+            if (status === 'synced') {
+                indicator.classList.add('synced');
+                statusText.textContent = 'Sincronizzato';
+            } else if (status === 'syncing') {
+                indicator.classList.add('syncing');
+                statusText.textContent = 'Sincronizzazione...';
+            } else {
+                indicator.classList.add('offline');
+                statusText.textContent = 'Offline';
+            }
+        }
+
+        // Aggiungi log entry
+        function addLog(userId, message) {
+            const log = document.getElementById(`log${userId}`);
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${time}] ${message}`;
+            log.insertBefore(entry, log.firstChild);
+            
+            // Mantieni solo ultimi 10 log
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Inizializza demo
+        window.onload = () => {
+            addLog(1, '✅ Connesso a SharePoint Lists');
+            addLog(2, '✅ Connesso a SharePoint Lists');
+            addLog(3, '✅ Connesso a SharePoint Lists');
+            
+            // Aggiungi dati iniziali
+            sharedDatabase = [
+                { id: nextId++, nome: 'Paolo Bianchi', createdBy: 1, createdByName: 'Mario', timestamp: '10:00:00' },
+                { id: nextId++, nome: 'Sara Verdi', createdBy: 2, createdByName: 'Luigi', timestamp: '10:15:00' }
+            ];
+            
+            refreshData(1);
+            refreshData(2);
+            refreshData(3);
+        };
+    </script>
+</body>
+</html>
