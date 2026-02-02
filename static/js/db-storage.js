@@ -13,7 +13,9 @@ class CalendarioStorage {
             FESTIVI: 'calendario_festivi',
             UTENTI: 'calendario_utenti',
             CURRENT_USER: 'calendario_current_user',
-            AUDIT_LOG: 'calendario_audit_log'
+            AUDIT_LOG: 'calendario_audit_log',
+            AREE: 'calendario_aree',
+            RUOLI: 'calendario_ruoli'
         };
         
         this.initializeData();
@@ -50,6 +52,14 @@ class CalendarioStorage {
         if (!localStorage.getItem(this.KEYS.AUDIT_LOG)) {
             this.saveData(this.KEYS.AUDIT_LOG, []);
         }
+        
+        if (!localStorage.getItem(this.KEYS.AREE)) {
+            this.saveData(this.KEYS.AREE, this.getDefaultAree());
+        }
+        
+        if (!localStorage.getItem(this.KEYS.RUOLI)) {
+            this.saveData(this.KEYS.RUOLI, this.getDefaultRuoli());
+        }
     }
     
     getDefaultAttivita() {
@@ -58,7 +68,18 @@ class CalendarioStorage {
             { id: 2, nome: 'Corso Avanzato', colore: '#2196F3', categoria: 'Formazione' },
             { id: 3, nome: 'Ferie', colore: '#FF9800', categoria: 'Assenza' },
             { id: 4, nome: 'Malattia', colore: '#F44336', categoria: 'Assenza' },
-            { id: 5, nome: 'Permesso', colore: '#9C27B0', categoria: 'Assenza' }
+            { id: 5, nome: 'Permesso', colore: '#9C27B0', categoria: 'Assenza' },
+            { id: 6, nome: 'Congedo', colore: '#FFC107', categoria: 'Assenza' },
+            { id: 7, nome: 'Riposo', colore: '#607D8B', categoria: 'Assenza' }
+        ];
+    }
+    
+    getDefaultAree() {
+        return [
+            { id: 1, nome: 'Scorta', colore: '#dc3545', descrizione: 'Area Scorta' },
+            { id: 2, nome: 'Condotta', colore: '#0d6efd', descrizione: 'Area Condotta' },
+            { id: 3, nome: 'Verifica', colore: '#198754', descrizione: 'Area Verifica' },
+            { id: 4, nome: 'Manovra', colore: '#ffc107', descrizione: 'Area Manovra' }
         ];
     }
     
@@ -71,8 +92,18 @@ class CalendarioStorage {
                 nome: 'Amministratore',
                 cognome: 'Sistema',
                 ruolo: 'Admin',
+                area: null, // Admin vede tutte le aree
                 attivo: true
             }
+        ];
+    }
+    
+    getDefaultRuoli() {
+        return [
+            { id: 1, nome: 'Admin', descrizione: 'Accesso totale, gestione utenti e permessi' },
+            { id: 2, nome: 'Supervisor', descrizione: 'Tutte le aree, senza gestione utenti' },
+            { id: 3, nome: 'Editor', descrizione: 'Modifica solo la propria area' },
+            { id: 4, nome: 'Viewer', descrizione: 'Visualizzazione solo propria area' }
         ];
     }
 
@@ -125,12 +156,13 @@ class CalendarioStorage {
         return istruttori.find(i => i.id === parseInt(id));
     }
     
-    addIstruttore(nome, email = '') {
+    addIstruttore(nome, email = '', area_id = null) {
         const istruttori = this.getIstruttori();
         const nuovoIstruttore = {
             id: this.generateId(istruttori),
             nome: nome,
             email: email,
+            area_id: area_id,
             attivo: true
         };
         istruttori.push(nuovoIstruttore);
@@ -216,6 +248,21 @@ class CalendarioStorage {
     }
     
     addImpegno(data) {
+        // Verifica sovrapposizioni prima di aggiungere
+        const sovrapposizioni = this.verificaSovrapposizione(
+            data.istruttore_id,
+            data.data_inizio,
+            data.data_fine
+        );
+        
+        if (sovrapposizioni.length > 0) {
+            return {
+                error: true,
+                message: 'Sovrapposizione rilevata!',
+                conflitti: sovrapposizioni
+            };
+        }
+        
         const impegni = this.getImpegni();
         const nuovoImpegno = {
             id: this.generateId(impegni),
@@ -226,13 +273,39 @@ class CalendarioStorage {
         impegni.push(nuovoImpegno);
         this.saveData(this.KEYS.IMPEGNI, impegni);
         this.logAction('add_impegno', `Aggiunto impegno ID: ${nuovoImpegno.id}`);
-        return nuovoImpegno;
+        return {
+            error: false,
+            impegno: nuovoImpegno
+        };
     }
     
     updateImpegno(id, data) {
         const impegni = this.getImpegni();
         const index = impegni.findIndex(i => i.id === parseInt(id));
         if (index !== -1) {
+            // Se vengono modificate le date, verifica sovrapposizioni
+            if (data.data_inizio || data.data_fine || data.istruttore_id) {
+                const impegnoCorrente = impegni[index];
+                const dataInizio = data.data_inizio || impegnoCorrente.data_inizio;
+                const dataFine = data.data_fine || impegnoCorrente.data_fine;
+                const istruttoreId = data.istruttore_id || impegnoCorrente.istruttore_id;
+                
+                const sovrapposizioni = this.verificaSovrapposizione(
+                    istruttoreId,
+                    dataInizio,
+                    dataFine,
+                    id
+                );
+                
+                if (sovrapposizioni.length > 0) {
+                    return {
+                        error: true,
+                        message: 'Sovrapposizione rilevata!',
+                        conflitti: sovrapposizioni
+                    };
+                }
+            }
+            
             impegni[index] = { 
                 ...impegni[index], 
                 ...data,
@@ -240,9 +313,15 @@ class CalendarioStorage {
             };
             this.saveData(this.KEYS.IMPEGNI, impegni);
             this.logAction('update_impegno', `Modificato impegno ID: ${id}`);
-            return impegni[index];
+            return {
+                error: false,
+                impegno: impegni[index]
+            };
         }
-        return null;
+        return {
+            error: true,
+            message: 'Impegno non trovato'
+        };
     }
     
     deleteImpegno(id) {
@@ -358,6 +437,96 @@ class CalendarioStorage {
         return true;
     }
 
+    // ==================== AREE ====================
+    
+    getAree() {
+        return this.getData(this.KEYS.AREE) || [];
+    }
+    
+    getArea(id) {
+        const aree = this.getAree();
+        return aree.find(a => a.id === parseInt(id));
+    }
+    
+    getIstruttoriByArea(areaId) {
+        const istruttori = this.getIstruttori();
+        return istruttori.filter(i => i.area_id === parseInt(areaId));
+    }
+
+    // ==================== VERIFICA SOVRAPPOSIZIONI ====================
+    
+    verificaSovrapposizione(istruttoreId, dataInizio, dataFine, impegnoIdEscluso = null) {
+        const impegni = this.getImpegni();
+        const dataInizioObj = new Date(dataInizio);
+        const dataFineObj = new Date(dataFine);
+        
+        const sovrapposizioni = impegni.filter(imp => {
+            // Escludi l'impegno stesso se stiamo modificando
+            if (impegnoIdEscluso && imp.id === parseInt(impegnoIdEscluso)) {
+                return false;
+            }
+            
+            // Controlla solo impegni dello stesso istruttore
+            if (imp.istruttore_id !== parseInt(istruttoreId)) {
+                return false;
+            }
+            
+            const impInizio = new Date(imp.data_inizio);
+            const impFine = new Date(imp.data_fine);
+            
+            // Verifica sovrapposizione: 
+            // (Start1 <= End2) AND (End1 >= Start2)
+            return (dataInizioObj <= impFine && dataFineObj >= impInizio);
+        });
+        
+        // Arricchisci con info attività e istruttore
+        return sovrapposizioni.map(sov => {
+            const attivita = this.getAttivitaById(sov.attivita_id);
+            const istruttore = this.getIstruttore(sov.istruttore_id);
+            return {
+                ...sov,
+                attivita_nome: attivita ? attivita.nome : 'N/D',
+                istruttore_nome: istruttore ? istruttore.nome : 'N/D'
+            };
+        });
+    }
+    
+    // ==================== SOSTITUZIONI ====================
+    
+    getSostituzioni() {
+        return this.getData(this.KEYS.SOSTITUZIONI) || [];
+    }
+    
+    addSostituzione(impegnoId, dataSostituzione, istruttoreOriginaleId, istruttoreSostitutoId, note = '') {
+        const sostituzioni = this.getSostituzioni();
+        const nuovaSostituzione = {
+            id: this.generateId(sostituzioni),
+            impegno_id: impegnoId,
+            data_sostituzione: dataSostituzione,
+            istruttore_originale_id: istruttoreOriginaleId,
+            istruttore_sostituto_id: istruttoreSostitutoId,
+            note: note,
+            creato_il: new Date().toISOString()
+        };
+        sostituzioni.push(nuovaSostituzione);
+        this.saveData(this.KEYS.SOSTITUZIONI, sostituzioni);
+        this.logAction('add_sostituzione', `Sostituzione creata per impegno ${impegnoId}`);
+        return nuovaSostituzione;
+    }
+    
+    getSostituzioniByImpegno(impegnoId) {
+        const sostituzioni = this.getSostituzioni();
+        return sostituzioni.filter(s => s.impegno_id === parseInt(impegnoId));
+    }
+    
+    deleteSostituzione(id) {
+        const sostituzioni = this.getSostituzioni();
+        const filtered = sostituzioni.filter(s => s.id !== parseInt(id));
+        this.saveData(this.KEYS.SOSTITUZIONI, filtered);
+        this.logAction('delete_sostituzione', `Eliminata sostituzione ID: ${id}`);
+        return true;
+    }
+
     // ==================== AUTENTICAZIONE ====================
     
     login(username, password) {
@@ -398,6 +567,101 @@ class CalendarioStorage {
         const user = this.getCurrentUser();
         return user && user.ruolo === 'Admin';
     }
+    
+    isSupervisor() {
+        const user = this.getCurrentUser();
+        return user && user.ruolo === 'Supervisor';
+    }
+    
+    canViewAllAreas() {
+        const user = this.getCurrentUser();
+        return user && (user.ruolo === 'Admin' || user.ruolo === 'Supervisor');
+    }
+    
+    getUserArea() {
+        const user = this.getCurrentUser();
+        return user ? user.area : null;
+    }
+    
+    canEdit() {
+        const user = this.getCurrentUser();
+        return user && (user.ruolo === 'Admin' || user.ruolo === 'Supervisor' || user.ruolo === 'Editor');
+    }
+    
+    // Gestione Utenti (solo Admin)
+    
+    addUtente(username, password, nome, cognome, ruolo, area = null) {
+        if (!this.isAdmin()) {
+            return { error: true, message: 'Solo Admin può creare utenti' };
+        }
+        
+        const utenti = this.getData(this.KEYS.UTENTI) || [];
+        
+        // Verifica username univoco
+        if (utenti.find(u => u.username === username)) {
+            return { error: true, message: 'Username già esistente' };
+        }
+        
+        const nuovoUtente = {
+            id: this.generateId(utenti),
+            username: username,
+            password: this.hashPassword(password),
+            nome: nome,
+            cognome: cognome,
+            ruolo: ruolo,
+            area: area,
+            attivo: true,
+            creato_il: new Date().toISOString()
+        };
+        
+        utenti.push(nuovoUtente);
+        this.saveData(this.KEYS.UTENTI, utenti);
+        this.logAction('add_utente', `Creato utente: ${username}`);
+        
+        return { error: false, utente: nuovoUtente };
+    }
+    
+    getUtenti() {
+        if (!this.isAdmin()) {
+            return [];
+        }
+        return this.getData(this.KEYS.UTENTI) || [];
+    }
+    
+    updateUtente(id, data) {
+        if (!this.isAdmin()) {
+            return { error: true, message: 'Solo Admin può modificare utenti' };
+        }
+        
+        const utenti = this.getData(this.KEYS.UTENTI) || [];
+        const index = utenti.findIndex(u => u.id === parseInt(id));
+        
+        if (index !== -1) {
+            utenti[index] = { 
+                ...utenti[index], 
+                ...data,
+                // Non modificare password se non fornita
+                password: data.password ? this.hashPassword(data.password) : utenti[index].password
+            };
+            this.saveData(this.KEYS.UTENTI, utenti);
+            this.logAction('update_utente', `Modificato utente ID: ${id}`);
+            return { error: false, utente: utenti[index] };
+        }
+        
+        return { error: true, message: 'Utente non trovato' };
+    }
+    
+    deleteUtente(id) {
+        if (!this.isAdmin()) {
+            return { error: true, message: 'Solo Admin può eliminare utenti' };
+        }
+        
+        const utenti = this.getData(this.KEYS.UTENTI) || [];
+        const filtered = utenti.filter(u => u.id !== parseInt(id));
+        this.saveData(this.KEYS.UTENTI, filtered);
+        this.logAction('delete_utente', `Eliminato utente ID: ${id}`);
+        return { error: false };
+    }
 
     // ==================== AUDIT LOG ====================
     
@@ -437,8 +701,11 @@ class CalendarioStorage {
             sostituzioni: this.getData(this.KEYS.SOSTITUZIONI),
             festivi: this.getData(this.KEYS.FESTIVI),
             utenti: this.getData(this.KEYS.UTENTI),
+            aree: this.getData(this.KEYS.AREE),
+            ruoli: this.getData(this.KEYS.RUOLI),
             audit_log: this.getData(this.KEYS.AUDIT_LOG),
-            exported_at: new Date().toISOString()
+            exported_at: new Date().toISOString(),
+            version: '2.0'
         };
     }
     
@@ -450,8 +717,10 @@ class CalendarioStorage {
             if (data.sostituzioni) this.saveData(this.KEYS.SOSTITUZIONI, data.sostituzioni);
             if (data.festivi) this.saveData(this.KEYS.FESTIVI, data.festivi);
             if (data.utenti) this.saveData(this.KEYS.UTENTI, data.utenti);
+            if (data.aree) this.saveData(this.KEYS.AREE, data.aree);
+            if (data.ruoli) this.saveData(this.KEYS.RUOLI, data.ruoli);
             
-            this.logAction('import_data', 'Dati importati da backup');
+            this.logAction('import_data', `Dati importati da backup (v${data.version || '1.0'})`);
             return true;
         }
         return false;

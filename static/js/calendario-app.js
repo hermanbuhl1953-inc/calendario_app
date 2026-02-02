@@ -58,12 +58,18 @@ function showMainApp() {
     document.getElementById('currentUserRole').textContent = user.ruolo;
     document.getElementById('userAvatar').textContent = user.nome.charAt(0) + user.cognome.charAt(0);
     
+    // Mostra tab Utenti solo per Admin
+    if (db.isAdmin()) {
+        document.getElementById('tabUtentiNav').style.display = 'block';
+    }
+    
     // Carica dati
     loadCalendario();
     loadIstruttori();
     loadImpegni();
     loadAttivita();
     updateFiltroIstruttore();
+    loadUtenti();
 }
 
 // ==================== AUTENTICAZIONE ====================
@@ -267,14 +273,19 @@ function loadIstruttori() {
         return;
     }
     
-    let html = '<table class="table table-hover"><thead><tr><th>Nome</th><th>Email</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>';
+    let html = '<table class="table table-hover"><thead><tr><th>Nome</th><th>Email</th><th>Area</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>';
     
+    const aree = db.getAree();
     istruttori.forEach(ist => {
         const stato = ist.attivo ? '<span class="badge bg-success">Attivo</span>' : '<span class="badge bg-secondary">Disattivo</span>';
+        const area = ist.area_id ? aree.find(a => a.id === ist.area_id) : null;
+        const areaNome = area ? `<span class="badge" style="background-color: ${area.colore}">${area.nome}</span>` : '-';
+        
         html += `
             <tr>
                 <td><strong>${ist.nome}</strong></td>
                 <td>${ist.email || '-'}</td>
+                <td>${areaNome}</td>
                 <td>${stato}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" onclick="editIstruttore(${ist.id})">
@@ -314,19 +325,29 @@ function updateFiltroIstruttore() {
 
 function showAddIstruttoreModal() {
     document.getElementById('formIstruttore').reset();
+    
+    // Popola select aree
+    const aree = db.getAree();
+    const selectArea = document.getElementById('istruttoreArea');
+    selectArea.innerHTML = '<option value="">Nessuna</option>';
+    aree.forEach(area => {
+        selectArea.innerHTML += `<option value="${area.id}">${area.nome}</option>`;
+    });
+    
     modalIstruttore.show();
 }
 
 function saveIstruttore() {
     const nome = document.getElementById('istruttoreNome').value;
     const email = document.getElementById('istruttoreEmail').value;
+    const areaId = document.getElementById('istruttoreArea').value || null;
     
     if (!nome) {
         alert('Il nome è obbligatorio');
         return;
     }
     
-    db.addIstruttore(nome, email);
+    db.addIstruttore(nome, email, areaId);
     modalIstruttore.hide();
     loadIstruttori();
     updateFiltroIstruttore();
@@ -415,7 +436,7 @@ function saveImpegno() {
     // Calcola data fine
     const dataFine = calcolaDataFine(dataInizio, giorniLavorativi);
     
-    db.addImpegno({
+    const result = db.addImpegno({
         istruttore_id: istruttoreId,
         attivita_id: attivitaId,
         data_inizio: dataInizio,
@@ -426,6 +447,12 @@ function saveImpegno() {
         aula: aula,
         posti: posti
     });
+    
+    // Gestisci conflitti
+    if (result.error) {
+        showConflittiModal(result.conflitti);
+        return;
+    }
     
     modalImpegno.hide();
     loadImpegni();
@@ -569,4 +596,192 @@ function formatDate(dateString) {
     if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('it-IT');
+}
+
+// ==================== GESTIONE UTENTI (Solo Admin) ====================
+
+let modalUtente, modalConflitti;
+let conflittiPendenti = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Altri modali già inizializzati sopra
+    if (document.getElementById('modalUtente')) {
+        modalUtente = new bootstrap.Modal(document.getElementById('modalUtente'));
+    }
+    if (document.getElementById('modalConflitti')) {
+        modalConflitti = new bootstrap.Modal(document.getElementById('modalConflitti'));
+    }
+});
+
+function loadUtenti() {
+    if (!db.isAdmin()) return;
+    
+    const utenti = db.getUtenti();
+    const container = document.getElementById('utentiList');
+    
+    if (!container) return;
+    
+    if (utenti.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">Nessun utente presente</div>';
+        return;
+    }
+    
+    const aree = db.getAree();
+    let html = '<table class="table table-hover"><thead><tr><th>Nome</th><th>Username</th><th>Ruolo</th><th>Area</th><th>Stato</th><th>Azioni</th></tr></thead><tbody>';
+    
+    utenti.forEach(ut => {
+        const stato = ut.attivo ? '<span class="badge bg-success">Attivo</span>' : '<span class="badge bg-secondary">Disattivo</span>';
+        const area = ut.area ? aree.find(a => a.id === ut.area) : null;
+        const areaNome = area ? `<span class="badge" style="background-color: ${area.colore}">${area.nome}</span>` : '-';
+        
+        html += `
+            <tr>
+                <td><strong>${ut.nome} ${ut.cognome}</strong></td>
+                <td>${ut.username}</td>
+                <td><span class="badge bg-primary">${ut.ruolo}</span></td>
+                <td>${areaNome}</td>
+                <td>${stato}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="deleteUtente(${ut.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function showAddUtenteModal() {
+    document.getElementById('formUtente').reset();
+    
+    // Popola select aree
+    const aree = db.getAree();
+    const selectArea = document.getElementById('utenteArea');
+    selectArea.innerHTML = '<option value="">Nessuna (tutte le aree)</option>';
+    aree.forEach(area => {
+        selectArea.innerHTML += `<option value="${area.id}">${area.nome}</option>`;
+    });
+    
+    modalUtente.show();
+}
+
+function toggleAreaSelect() {
+    const ruolo = document.getElementById('utenteRuolo').value;
+    const areaContainer = document.getElementById('utenteAreaContainer');
+    
+    // Admin e Supervisor non hanno area specifica
+    if (ruolo === 'Admin' || ruolo === 'Supervisor') {
+        areaContainer.style.display = 'none';
+    } else {
+        areaContainer.style.display = 'block';
+    }
+}
+
+function saveUtente() {
+    const nome = document.getElementById('utenteNome').value;
+    const cognome = document.getElementById('utenteCognome').value;
+    const username = document.getElementById('utenteUsername').value;
+    const password = document.getElementById('utentePassword').value;
+    const ruolo = document.getElementById('utenteRuolo').value;
+    const area = document.getElementById('utenteArea').value || null;
+    
+    if (!nome || !cognome || !username || !password || !ruolo) {
+        alert('Compila tutti i campi obbligatori');
+        return;
+    }
+    
+    const result = db.addUtente(username, password, nome, cognome, ruolo, area);
+    
+    if (result.error) {
+        alert('Errore: ' + result.message);
+        return;
+    }
+    
+    modalUtente.hide();
+    loadUtenti();
+}
+
+function deleteUtente(id) {
+    if (confirm('Vuoi eliminare questo utente?')) {
+        const result = db.deleteUtente(id);
+        if (!result.error) {
+            loadUtenti();
+        } else {
+            alert('Errore: ' + result.message);
+        }
+    }
+}
+
+// ==================== GESTIONE CONFLITTI ====================
+
+function showConflittiModal(conflitti) {
+    conflittiPendenti = conflitti;
+    
+    const dettaglio = document.getElementById('conflittiDettaglio');
+    let html = '<ul class="list-group">';
+    
+    conflitti.forEach(conf => {
+        html += `
+            <li class="list-group-item">
+                <strong>${conf.istruttore_nome}</strong> - ${conf.attivita_nome}<br>
+                <small>Periodo: ${formatDate(conf.data_inizio)} → ${formatDate(conf.data_fine)}</small>
+                ${conf.note ? `<br><small class="text-muted">${conf.note}</small>` : ''}
+            </li>
+        `;
+    });
+    
+    html += '</ul>';
+    dettaglio.innerHTML = html;
+    
+    modalConflitti.show();
+}
+
+let forceCreate = false;
+
+function forceAddImpegno() {
+    if (confirm('Sei sicuro di voler creare l\'impegno nonostante le sovrapposizioni?')) {
+        forceCreate = true;
+        modalConflitti.hide();
+        
+        // Riprendi i dati dal form e crea comunque
+        const istruttoreId = parseInt(document.getElementById('impegnoIstruttore').value);
+        const attivitaId = parseInt(document.getElementById('impegnoAttivita').value);
+        const dataInizio = document.getElementById('impegnoDataInizio').value;
+        const giorniLavorativi = parseInt(document.getElementById('impegnoGiorni').value);
+        const note = document.getElementById('impegnoNote').value;
+        const luogo = document.getElementById('impegnoLuogo').value;
+        const aula = document.getElementById('impegnoAula').value;
+        const posti = document.getElementById('impegnoPosti').value;
+        
+        const dataFine = calcolaDataFine(dataInizio, giorniLavorativi);
+        
+        // Salva direttamente senza controlli
+        const impegni = db.getImpegni();
+        const nuovoImpegno = {
+            id: db.generateId(impegni),
+            istruttore_id: istruttoreId,
+            attivita_id: attivitaId,
+            data_inizio: dataInizio,
+            giorni_lavorativi: giorniLavorativi,
+            data_fine: dataFine,
+            note: note + ' [FORZATO]',
+            luogo: luogo,
+            aula: aula,
+            posti: posti,
+            creato_il: new Date().toISOString(),
+            modificato_il: new Date().toISOString()
+        };
+        
+        impegni.push(nuovoImpegno);
+        db.saveData(db.KEYS.IMPEGNI, impegni);
+        db.logAction('add_impegno_forced', `Impegno forzato ID: ${nuovoImpegno.id} (con sovrapposizioni)`);
+        
+        modalImpegno.hide();
+        loadImpegni();
+        loadCalendario();
+        forceCreate = false;
+    }
 }

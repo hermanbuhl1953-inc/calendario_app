@@ -305,6 +305,11 @@
                         <i class="fas fa-list me-2"></i>Attività
                     </a>
                 </li>
+                <li class="nav-item" id="tabUtentiNav" style="display: none;">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tabUtenti">
+                        <i class="fas fa-users-cog me-2"></i>Utenti
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" data-bs-toggle="tab" href="#tabExport">
                         <i class="fas fa-download me-2"></i>Export/Import
@@ -385,6 +390,17 @@
                     <div id="attivitaList"></div>
                 </div>
 
+                <!-- TAB UTENTI (Solo Admin) -->
+                <div class="tab-pane fade" id="tabUtenti">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h4>Gestione Utenti</h4>
+                        <button class="btn btn-success" onclick="showAddUtenteModal()">
+                            <i class="fas fa-user-plus me-1"></i>Nuovo Utente
+                        </button>
+                    </div>
+                    <div id="utentiList"></div>
+                </div>
+
                 <!-- TAB EXPORT -->
                 <div class="tab-pane fade" id="tabExport">
                     <h4>Export e Import Dati</h4>
@@ -434,6 +450,12 @@
                         <div class="mb-3">
                             <label class="form-label">Email</label>
                             <input type="email" class="form-control" id="istruttoreEmail">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Area di appartenenza</label>
+                            <select class="form-select" id="istruttoreArea">
+                                <option value="">Nessuna</option>
+                            </select>
                         </div>
                     </form>
                 </div>
@@ -530,6 +552,85 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
                     <button type="button" class="btn btn-primary" onclick="saveAttivita()">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuovo Utente (Solo Admin) -->
+    <div class="modal fade" id="modalUtente" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuovo Utente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formUtente">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nome *</label>
+                                <input type="text" class="form-control" id="utenteNome" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Cognome *</label>
+                                <input type="text" class="form-control" id="utenteCognome" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="utenteUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="utentePassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ruolo *</label>
+                            <select class="form-select" id="utenteRuolo" required onchange="toggleAreaSelect()">
+                                <option value="">Seleziona...</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Supervisor">Supervisor</option>
+                                <option value="Editor">Editor</option>
+                                <option value="Viewer">Viewer</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="utenteAreaContainer">
+                            <label class="form-label">Area di appartenenza</label>
+                            <select class="form-select" id="utenteArea">
+                                <option value="">Nessuna (tutte le aree)</option>
+                            </select>
+                            <small class="text-muted">Admin e Supervisor vedono tutte le aree. Editor/Viewer solo la propria.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-primary" onclick="saveUtente()">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Conflitti/Sovrapposizioni -->
+    <div class="modal fade" id="modalConflitti" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Sovrapposizione Rilevata!</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <strong>Attenzione:</strong> L'impegno che stai cercando di creare si sovrappone con altri impegni esistenti.
+                    </div>
+                    <div id="conflittiDettaglio"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                    <button type="button" class="btn btn-warning" onclick="forceAddImpegno()">
+                        <i class="fas fa-exclamation-circle me-1"></i>Crea Comunque
+                    </button>
                 </div>
             </div>
         </div>
