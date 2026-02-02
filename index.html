@@ -695,8 +695,13 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Database Storage -->
+    <!-- Database Storage - Scegli una delle due opzioni: -->
+    
+    <!-- OPZIONE 1: LocalStorage (file locale, singolo utente) -->
     <script src="static/js/db-storage.js"></script>
+    
+    <!-- OPZIONE 2: SharePoint Multi-Utente (80+ utenti concorrenti) -->
+    <!-- <script src="static/js/db-sharepoint.js"></script> -->
     
     <!-- Main App Logic -->
     <script src="static/js/calendario-app.js"></script>
