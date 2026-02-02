@@ -6,7 +6,7 @@
 // Variabili globali
 let currentMese = new Date().getMonth() + 1;
 let currentAnno = new Date().getFullYear();
-let modalIstruttore, modalImpegno, modalAttivita;
+let modalIstruttore, modalImpegno, modalAttivita, modalFestivo;
 
 // ==================== INIZIALIZZAZIONE ====================
 
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     modalIstruttore = new bootstrap.Modal(document.getElementById('modalIstruttore'));
     modalImpegno = new bootstrap.Modal(document.getElementById('modalImpegno'));
     modalAttivita = new bootstrap.Modal(document.getElementById('modalAttivita'));
+    modalFestivo = new bootstrap.Modal(document.getElementById('modalFestivo'));
     
     // Controlla login
     checkLogin();
@@ -70,6 +71,7 @@ function showMainApp() {
     loadAttivita();
     updateFiltroIstruttore();
     loadUtenti();
+    loadFestivi();
 }
 
 // ==================== AUTENTICAZIONE ====================
@@ -353,6 +355,57 @@ function saveIstruttore() {
     updateFiltroIstruttore();
 }
 
+function editIstruttore(id) {
+    const istruttore = db.getIstruttore(id);
+    if (!istruttore) return;
+    
+    // Popola form con dati esistenti
+    document.getElementById('istruttoreNome').value = istruttore.nome;
+    document.getElementById('istruttoreEmail').value = istruttore.email || '';
+    
+    // Popola select aree
+    const aree = db.getAree();
+    const selectArea = document.getElementById('istruttoreArea');
+    selectArea.innerHTML = '<option value="">Nessuna</option>';
+    aree.forEach(area => {
+        const selected = (istruttore.area_id === area.id) ? 'selected' : '';
+        selectArea.innerHTML += `<option value="${area.id}" ${selected}>${area.nome}</option>`;
+    });
+    
+    // Cambia titolo modal
+    document.querySelector('#modalIstruttore .modal-title').textContent = 'Modifica Istruttore';
+    
+    // Sostituisci funzione save temporaneamente
+    const btnSave = document.querySelector('#modalIstruttore .btn-primary');
+    btnSave.onclick = function() {
+        updateIstruttore(id);
+    };
+    
+    modalIstruttore.show();
+}
+
+function updateIstruttore(id) {
+    const nome = document.getElementById('istruttoreNome').value;
+    const email = document.getElementById('istruttoreEmail').value;
+    const areaId = document.getElementById('istruttoreArea').value || null;
+    
+    if (!nome) {
+        alert('Il nome è obbligatorio');
+        return;
+    }
+    
+    db.updateIstruttore(id, { nome, email, area_id: areaId });
+    
+    // Ripristina funzione save originale
+    const btnSave = document.querySelector('#modalIstruttore .btn-primary');
+    btnSave.onclick = saveIstruttore;
+    document.querySelector('#modalIstruttore .modal-title').textContent = 'Nuovo Istruttore';
+    
+    modalIstruttore.hide();
+    loadIstruttori();
+    updateFiltroIstruttore();
+}
+
 function deleteIstruttore(id) {
     if (confirm('Vuoi eliminare questo istruttore?')) {
         db.deleteIstruttore(id);
@@ -462,13 +515,20 @@ function saveImpegno() {
 function calcolaDataFine(dataInizio, giorniLavorativi) {
     const data = new Date(dataInizio);
     let giorniAggiunti = 0;
+    const anno = data.getFullYear();
+    
+    // Ottieni festività per l'anno corrente
+    const festivi = db.getFestivi(anno);
+    const festiviSet = new Set(festivi.map(f => f.data));
     
     while (giorniAggiunti < giorniLavorativi) {
         data.setDate(data.getDate() + 1);
         
-        // Salta weekend
         const dayOfWeek = data.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        const dataStr = data.toISOString().split('T')[0];
+        
+        // Salta weekend E festività
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !festiviSet.has(dataStr)) {
             giorniAggiunti++;
         }
     }
@@ -587,6 +647,98 @@ function resetDatabase() {
     if (db.resetAll()) {
         alert('Database resettato!');
         location.reload();
+    }
+}
+
+// ==================== FESTIVITÀ ====================
+
+function loadFestivi() {
+    loadFestiviCustom();
+    loadFestiviItaliani();
+}
+
+function loadFestiviCustom() {
+    const festivi = db.getData(db.KEYS.FESTIVI) || [];
+    const container = document.getElementById('festiviList');
+    
+    if (festivi.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">Nessuna festività aziendale aggiunta</div>';
+        return;
+    }
+    
+    // Ordina per data
+    festivi.sort((a, b) => new Date(a.data) - new Date(b.data));
+    
+    let html = '<table class="table table-hover"><thead><tr><th>Data</th><th>Descrizione</th><th>Azioni</th></tr></thead><tbody>';
+    
+    festivi.forEach(f => {
+        html += `
+            <tr>
+                <td><strong>${formatDate(f.data)}</strong></td>
+                <td>${f.nome}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="deleteFestivo(${f.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function loadFestiviItaliani() {
+    const anno = new Date().getFullYear();
+    const festivi = db.getFestiviItaliani(anno);
+    const container = document.getElementById('festiviItalianiList');
+    
+    // Ordina per data
+    festivi.sort((a, b) => new Date(a.data) - new Date(b.data));
+    
+    let html = '<table class="table table-sm"><thead><tr><th>Data</th><th>Nome</th></tr></thead><tbody>';
+    
+    festivi.forEach(f => {
+        html += `
+            <tr>
+                <td>${formatDate(f.data)}</td>
+                <td><span class="badge bg-secondary">${f.nome}</span></td>
+            </tr>
+        `;
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function showAddFestivoModal() {
+    document.getElementById('formFestivo').reset();
+    modalFestivo.show();
+}
+
+function saveFestivo() {
+    const data = document.getElementById('festivoData').value;
+    const nome = document.getElementById('festivoNome').value;
+    
+    if (!data || !nome) {
+        alert('Compila tutti i campi');
+        return;
+    }
+    
+    db.addFestivoCustom(data, nome);
+    modalFestivo.hide();
+    loadFestiviCustom();
+    
+    // Ricarica calendario per mostrare il nuovo festivo
+    loadCalendario();
+}
+
+function deleteFestivo(id) {
+    if (confirm('Vuoi eliminare questa festività?')) {
+        db.deleteFestivoCustom(id);
+        loadFestiviCustom();
+        loadCalendario();
     }
 }
 

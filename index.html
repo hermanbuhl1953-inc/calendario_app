@@ -305,6 +305,11 @@
                         <i class="fas fa-list me-2"></i>Attività
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tabFestivi">
+                        <i class="fas fa-calendar-times me-2"></i>Festività
+                    </a>
+                </li>
                 <li class="nav-item" id="tabUtentiNav" style="display: none;">
                     <a class="nav-link" data-bs-toggle="tab" href="#tabUtenti">
                         <i class="fas fa-users-cog me-2"></i>Utenti
@@ -388,6 +393,29 @@
                         </button>
                     </div>
                     <div id="attivitaList"></div>
+                </div>
+
+                <!-- TAB FESTIVITÀ -->
+                <div class="tab-pane fade" id="tabFestivi">
+                    <h4 class="mb-3">Gestione Festività</h4>
+                    
+                    <div class="alert alert-info">
+                        <strong><i class="fas fa-info-circle me-1"></i>Info:</strong>
+                        Le festività italiane sono già incluse automaticamente. Qui puoi aggiungere festività aziendali extra (ponti, chiusure, ecc.).
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-3">
+                        <h5>Festività Custom</h5>
+                        <button class="btn btn-success" onclick="showAddFestivoModal()">
+                            <i class="fas fa-plus me-1"></i>Nuova Festività
+                        </button>
+                    </div>
+                    <div id="festiviList"></div>
+                    
+                    <hr>
+                    
+                    <h5 class="mt-4">Festività Italiane (automatiche)</h5>
+                    <div id="festiviItalianiList"></div>
                 </div>
 
                 <!-- TAB UTENTI (Solo Admin) -->
@@ -552,6 +580,34 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
                     <button type="button" class="btn btn-primary" onclick="saveAttivita()">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuova Festività Custom -->
+    <div class="modal fade" id="modalFestivo" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuova Festività Aziendale</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formFestivo">
+                        <div class="mb-3">
+                            <label class="form-label">Data *</label>
+                            <input type="date" class="form-control" id="festivoData" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descrizione *</label>
+                            <input type="text" class="form-control" id="festivoNome" placeholder="es. Ponte Ferragosto, Chiusura aziendale..." required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-primary" onclick="saveFestivo()">Salva</button>
                 </div>
             </div>
         </div>
