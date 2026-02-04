@@ -187,6 +187,16 @@ function isWeekend(anno, mese, giorno) {
     return dayOfWeek === 0 || dayOfWeek === 6;
 }
 
+function isWorkingDay(dateStr) {
+    const date = new Date(dateStr);
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) return false;
+    const anno = date.getFullYear();
+    const festivi = db.getFestivi(anno);
+    const festiviSet = new Set(festivi.map(f => f.data));
+    return !festiviSet.has(dateStr);
+}
+
 function getImpegniForDate(data, filtroIstruttoreId = null) {
     let impegni = db.getImpegni();
     
@@ -198,8 +208,12 @@ function getImpegniForDate(data, filtroIstruttoreId = null) {
         const dataObj = new Date(data);
         const dataInizio = new Date(imp.data_inizio);
         const dataFine = new Date(imp.data_fine);
-        
-        return dataObj >= dataInizio && dataObj <= dataFine;
+
+        if (dataObj < dataInizio || dataObj > dataFine) return false;
+
+        const giorniExtra = Array.isArray(imp.giorni_extra) ? imp.giorni_extra : [];
+        const isExtra = giorniExtra.some(d => (typeof d === 'string' ? d === data : d && d.date === data));
+        return isExtra || isWorkingDay(data);
     });
 }
 
@@ -342,15 +356,20 @@ function showAddIstruttoreModal() {
 function saveIstruttore() {
     const nome = document.getElementById('istruttoreNome').value;
     const email = document.getElementById('istruttoreEmail').value;
-    const areaId = document.getElementById('istruttoreArea').value || null;
-    
+    const areaId = document.getElementById('istruttoreArea').value;
+    const areaIdNum = areaId ? parseInt(areaId) : null;
+
     if (!nome) {
         alert('Il nome è obbligatorio');
         return;
     }
+
+    db.addIstruttore(nome, email, areaIdNum);
     
-    db.addIstruttore(nome, email, areaId);
     modalIstruttore.hide();
+    if (document.activeElement) document.activeElement.blur();
+    document.getElementById('formIstruttore').reset();
+    
     loadIstruttori();
     updateFiltroIstruttore();
 }
@@ -387,21 +406,25 @@ function editIstruttore(id) {
 function updateIstruttore(id) {
     const nome = document.getElementById('istruttoreNome').value;
     const email = document.getElementById('istruttoreEmail').value;
-    const areaId = document.getElementById('istruttoreArea').value || null;
-    
+    const areaId = document.getElementById('istruttoreArea').value;
+    const areaIdNum = areaId ? parseInt(areaId) : null;
+
     if (!nome) {
         alert('Il nome è obbligatorio');
         return;
     }
-    
-    db.updateIstruttore(id, { nome, email, area_id: areaId });
+
+    db.updateIstruttore(id, { nome, email, area_id: areaIdNum });
     
     // Ripristina funzione save originale
     const btnSave = document.querySelector('#modalIstruttore .btn-primary');
     btnSave.onclick = saveIstruttore;
     document.querySelector('#modalIstruttore .modal-title').textContent = 'Nuovo Istruttore';
-    
+
     modalIstruttore.hide();
+    if (document.activeElement) document.activeElement.blur();
+    document.getElementById('formIstruttore').reset();
+    
     loadIstruttori();
     updateFiltroIstruttore();
 }
@@ -442,6 +465,9 @@ function loadImpegni() {
                 <td>${imp.giorni_lavorativi}</td>
                 <td>${imp.note || '-'}</td>
                 <td>
+                    <button class="btn btn-sm btn-primary me-1" onclick="editImpegno(${imp.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
                     <button class="btn btn-sm btn-danger" onclick="deleteImpegno(${imp.id})">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -456,6 +482,7 @@ function loadImpegni() {
 
 function showAddImpegnoModal() {
     document.getElementById('formImpegno').reset();
+    resetGiorniExtra();
     
     // Popola select istruttori
     updateFiltroIstruttore();
@@ -471,29 +498,121 @@ function showAddImpegnoModal() {
     modalImpegno.show();
 }
 
+function getGiorniExtra() {
+    const raw = document.getElementById('impegnoGiorniExtra').value;
+    if (!raw) return [];
+
+    try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+            return parsed
+                .filter(d => d && d.date)
+                .map(d => ({ date: d.date, counts: !!d.counts }));
+        }
+    } catch (e) {
+        // Fallback per vecchio formato CSV
+    }
+
+    return raw
+        .split(',')
+        .map(d => d.trim())
+        .filter(d => d)
+        .map(d => ({ date: d, counts: true }));
+}
+
+function setGiorniExtra(days) {
+    const uniqueMap = new Map();
+    days.forEach(d => {
+        if (typeof d === 'string') {
+            uniqueMap.set(d, { date: d, counts: true });
+            return;
+        }
+        if (d && d.date) uniqueMap.set(d.date, { date: d.date, counts: !!d.counts });
+    });
+    const unique = Array.from(uniqueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+    document.getElementById('impegnoGiorniExtra').value = JSON.stringify(unique);
+    renderGiorniExtra(unique);
+}
+
+function renderGiorniExtra(days) {
+    const container = document.getElementById('impegnoGiorniExtraList');
+    if (!container) return;
+    if (!days || days.length === 0) {
+        container.innerHTML = '<span class="text-muted">Nessun giorno extra selezionato</span>';
+        return;
+    }
+    container.innerHTML = days
+        .map(d => {
+            const label = d.counts ? 'Conta' : 'Non conta';
+            const badgeClass = d.counts ? 'bg-success' : 'bg-secondary';
+            return `
+                <span class="badge ${badgeClass} me-1">
+                    ${d.date} (${label})
+                    <button type="button" class="btn btn-sm btn-light ms-1" onclick="toggleGiornoExtraCount('${d.date}')">↔</button>
+                    <button type="button" class="btn btn-sm btn-light ms-1" onclick="removeGiornoExtra('${d.date}')">×</button>
+                </span>`;
+        })
+        .join('');
+}
+
+function addGiornoExtra() {
+    const picker = document.getElementById('impegnoGiornoExtraPicker');
+    const checkbox = document.getElementById('impegnoGiornoExtraConta');
+    if (!picker || !picker.value) return;
+    const days = getGiorniExtra();
+    const counts = checkbox ? checkbox.checked : true;
+    days.push({ date: picker.value, counts });
+    setGiorniExtra(days);
+    picker.value = '';
+}
+
+function toggleGiornoExtraCount(day) {
+    const days = getGiorniExtra().map(d =>
+        d.date === day ? { ...d, counts: !d.counts } : d
+    );
+    setGiorniExtra(days);
+}
+
+function removeGiornoExtra(day) {
+    const days = getGiorniExtra().filter(d => d.date !== day);
+    setGiorniExtra(days);
+}
+
+function resetGiorniExtra() {
+    document.getElementById('impegnoGiorniExtra').value = '';
+    renderGiorniExtra([]);
+    const picker = document.getElementById('impegnoGiornoExtraPicker');
+    if (picker) picker.value = '';
+    const checkbox = document.getElementById('impegnoGiornoExtraConta');
+    if (checkbox) checkbox.checked = true;
+}
+
 function saveImpegno() {
     const istruttoreId = parseInt(document.getElementById('impegnoIstruttore').value);
     const attivitaId = parseInt(document.getElementById('impegnoAttivita').value);
     const dataInizio = document.getElementById('impegnoDataInizio').value;
     const giorniLavorativi = parseInt(document.getElementById('impegnoGiorni').value);
+    const giorniExtra = getGiorniExtra();
     const note = document.getElementById('impegnoNote').value;
     const luogo = document.getElementById('impegnoLuogo').value;
     const aula = document.getElementById('impegnoAula').value;
     const posti = document.getElementById('impegnoPosti').value;
-    
+
     if (!istruttoreId || !attivitaId || !dataInizio || !giorniLavorativi) {
         alert('Compila tutti i campi obbligatori');
         return;
     }
-    
+
+    // Converti giorni extra in array
     // Calcola data fine
-    const dataFine = calcolaDataFine(dataInizio, giorniLavorativi);
-    
+    const dataFine = calcolaDataFine(dataInizio, giorniLavorativi, giorniExtra);
+
     const result = db.addImpegno({
         istruttore_id: istruttoreId,
         attivita_id: attivitaId,
         data_inizio: dataInizio,
         giorni_lavorativi: giorniLavorativi,
+        giorni_extra: giorniExtra,
         data_fine: dataFine,
         note: note,
         luogo: luogo,
@@ -501,18 +620,26 @@ function saveImpegno() {
         posti: posti
     });
     
-    // Gestisci conflitti
+    // Gestisci errori
     if (result.error) {
-        showConflittiModal(result.conflitti);
+        if (result.conflitti) {
+            // È una sovrapposizione
+            showConflittiModal(result.conflitti);
+        } else {
+            // È un altro errore (salvataggio, etc)
+            alert(`❌ Errore: ${result.message || 'Impossibile salvare l\'impegno'}`);
+        }
         return;
     }
     
+    alert('✅ Impegno salvato con successo!');
     modalImpegno.hide();
+    if (document.activeElement) document.activeElement.blur();
     loadImpegni();
     loadCalendario();
 }
 
-function calcolaDataFine(dataInizio, giorniLavorativi) {
+function calcolaDataFine(dataInizio, giorniLavorativi, giorniExtra = []) {
     const data = new Date(dataInizio);
     let giorniAggiunti = 0;
     const anno = data.getFullYear();
@@ -521,14 +648,27 @@ function calcolaDataFine(dataInizio, giorniLavorativi) {
     const festivi = db.getFestivi(anno);
     const festiviSet = new Set(festivi.map(f => f.data));
     
+    // Crea set dei giorni extra con flag "counts"
+    const normalizedExtra = giorniExtra.map(d =>
+        typeof d === 'string' ? { date: d, counts: true } : d
+    );
+    const extraCountSet = new Set(
+        normalizedExtra.filter(d => d && d.date && d.counts).map(d => d.date)
+    );
+
     while (giorniAggiunti < giorniLavorativi) {
         data.setDate(data.getDate() + 1);
-        
+
         const dayOfWeek = data.getDay();
         const dataStr = data.toISOString().split('T')[0];
-        
-        // Salta weekend E festività
-        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !festiviSet.has(dataStr)) {
+
+        // Include il giorno se:
+        // 1. È un giorno lavorativo normale (lun-ven non festivo)
+        // 2. È un giorno extra che conta per la data fine
+        const isGiornoExtraConta = extraCountSet.has(dataStr);
+        const isGiornoLavorativo = dayOfWeek !== 0 && dayOfWeek !== 6 && !festiviSet.has(dataStr);
+
+        if (isGiornoLavorativo || isGiornoExtraConta) {
             giorniAggiunti++;
         }
     }
@@ -542,6 +682,99 @@ function deleteImpegno(id) {
         loadImpegni();
         loadCalendario();
     }
+}
+
+function editImpegno(id) {
+    const impegno = db.getImpegno(id);
+    if (!impegno) return;
+
+    // Reset form e ripopola select
+    document.getElementById('formImpegno').reset();
+
+    // Popola select istruttori
+    updateFiltroIstruttore();
+
+    // Popola select attività
+    const attivita = db.getAttivita();
+    const selectAttivita = document.getElementById('impegnoAttivita');
+    selectAttivita.innerHTML = '<option value="">Seleziona...</option>';
+    attivita.forEach(att => {
+        selectAttivita.innerHTML += `<option value="${att.id}">${att.nome}</option>`;
+    });
+
+    // Popola form con dati esistenti
+    document.getElementById('impegnoIstruttore').value = impegno.istruttore_id;
+    document.getElementById('impegnoAttivita').value = impegno.attivita_id;
+    document.getElementById('impegnoDataInizio').value = impegno.data_inizio;
+    document.getElementById('impegnoGiorni').value = impegno.giorni_lavorativi;
+    setGiorniExtra(impegno.giorni_extra ? impegno.giorni_extra : []);
+    document.getElementById('impegnoNote').value = impegno.note || '';
+    document.getElementById('impegnoLuogo').value = impegno.luogo || '';
+    document.getElementById('impegnoAula').value = impegno.aula || '';
+    document.getElementById('impegnoPosti').value = impegno.posti || '';
+
+    // Cambia titolo modal
+    document.querySelector('#modalImpegno .modal-title').textContent = 'Modifica Impegno';
+
+    // Sostituisci funzione save temporaneamente
+    const btnSave = document.querySelector('#modalImpegno .btn-primary');
+    btnSave.onclick = function() {
+        updateImpegno(id);
+    };
+
+    modalImpegno.show();
+}
+
+function updateImpegno(id) {
+    const istruttoreId = parseInt(document.getElementById('impegnoIstruttore').value);
+    const attivitaId = parseInt(document.getElementById('impegnoAttivita').value);
+    const dataInizio = document.getElementById('impegnoDataInizio').value;
+    const giorniLavorativi = parseInt(document.getElementById('impegnoGiorni').value);
+    const giorniExtra = getGiorniExtra();
+    const note = document.getElementById('impegnoNote').value;
+    const luogo = document.getElementById('impegnoLuogo').value;
+    const aula = document.getElementById('impegnoAula').value;
+    const posti = document.getElementById('impegnoPosti').value;
+
+    if (!istruttoreId || !attivitaId || !dataInizio || !giorniLavorativi) {
+        alert('Compila tutti i campi obbligatori');
+        return;
+    }
+
+    // Converti giorni extra in array
+    // Calcola data fine
+    const dataFine = calcolaDataFine(dataInizio, giorniLavorativi, giorniExtra);
+
+    const result = db.updateImpegno(id, {
+        istruttore_id: istruttoreId,
+        attivita_id: attivitaId,
+        data_inizio: dataInizio,
+        giorni_lavorativi: giorniLavorativi,
+        giorni_extra: giorniExtra,
+        data_fine: dataFine,
+        note: note,
+        luogo: luogo,
+        aula: aula,
+        posti: posti
+    });
+
+    // Gestisci eventuali conflitti
+    if (result && result.error) {
+        showConflittiModal(result.conflitti);
+        return;
+    }
+
+    // Ripristina funzione save originale
+    const btnSave = document.querySelector('#modalImpegno .btn-primary');
+    btnSave.onclick = saveImpegno;
+    document.querySelector('#modalImpegno .modal-title').textContent = 'Nuovo Impegno';
+
+    modalImpegno.hide();
+    if (document.activeElement) document.activeElement.blur();
+    document.getElementById('formImpegno').reset();
+    
+    loadImpegni();
+    loadCalendario();
 }
 
 // ==================== ATTIVITÀ ====================
@@ -870,6 +1103,11 @@ function deleteUtente(id) {
 // ==================== GESTIONE CONFLITTI ====================
 
 function showConflittiModal(conflitti) {
+    if (!Array.isArray(conflitti)) {
+        console.warn('Conflitti non disponibili o formato errato:', conflitti);
+        return;
+    }
+
     conflittiPendenti = conflitti;
     
     const dettaglio = document.getElementById('conflittiDettaglio');
@@ -903,12 +1141,13 @@ function forceAddImpegno() {
         const attivitaId = parseInt(document.getElementById('impegnoAttivita').value);
         const dataInizio = document.getElementById('impegnoDataInizio').value;
         const giorniLavorativi = parseInt(document.getElementById('impegnoGiorni').value);
+        const giorniExtra = getGiorniExtra();
         const note = document.getElementById('impegnoNote').value;
         const luogo = document.getElementById('impegnoLuogo').value;
         const aula = document.getElementById('impegnoAula').value;
         const posti = document.getElementById('impegnoPosti').value;
         
-        const dataFine = calcolaDataFine(dataInizio, giorniLavorativi);
+        const dataFine = calcolaDataFine(dataInizio, giorniLavorativi, giorniExtra);
         
         // Salva direttamente senza controlli
         const impegni = db.getImpegni();
@@ -918,6 +1157,7 @@ function forceAddImpegno() {
             attivita_id: attivitaId,
             data_inizio: dataInizio,
             giorni_lavorativi: giorniLavorativi,
+            giorni_extra: giorniExtra,
             data_fine: dataFine,
             note: note + ' [FORZATO]',
             luogo: luogo,

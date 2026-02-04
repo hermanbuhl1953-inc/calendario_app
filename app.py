@@ -111,6 +111,9 @@ def require_login(f):
         
         # Database ok, controlla sessione
         if 'utente_id' not in session:
+            # Se è una API request, restituisci JSON error
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Non autenticato'}), 401
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -136,10 +139,16 @@ def require_editor(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'utente_id' not in session:
+            # Se è una API request, restituisci JSON error
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Non autenticato'}), 401
             return redirect(url_for('login'))
         
         utente = get_utente_by_id(session['utente_id'])
         if not utente or utente['ruolo_nome'] not in ['Admin', 'Editor']:
+            # Se è una API request, restituisci JSON error
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Non hai i permessi per modificare'}), 403
             return render_template('errore.html',
                 messaggio='Solo Editor e Admin possono modificare'), 403
         return f(*args, **kwargs)
@@ -150,10 +159,16 @@ def require_supervisor(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'utente_id' not in session:
+            # Se è una API request, restituisci JSON error
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Non autenticato'}), 401
             return redirect(url_for('login'))
         
         utente = get_utente_by_id(session['utente_id'])
         if not utente or utente['ruolo_nome'] not in ['Admin', 'Editor', 'supervisor']:
+            # Se è una API request, restituisci JSON error
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Non hai i permessi per modificare'}), 403
             return render_template('errore.html',
                 messaggio='Non hai i permessi per modificare'), 403
         return f(*args, **kwargs)

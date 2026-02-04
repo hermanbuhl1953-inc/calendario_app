@@ -526,6 +526,22 @@
                             </div>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Giorni Extra (sabato/festivi da includere)</label>
+                            <div class="input-group">
+                                <input type="date" class="form-control" id="impegnoGiornoExtraPicker">
+                                <button type="button" class="btn btn-outline-primary" onclick="addGiornoExtra()">Aggiungi</button>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="impegnoGiornoExtraConta" checked>
+                                <label class="form-check-label" for="impegnoGiornoExtraConta">
+                                    Conta per la data fine (accorcia la durata)
+                                </label>
+                            </div>
+                            <div class="form-text">Se disattivo, il giorno extra NON conta nei giorni lavorativi (allunga il corso).</div>
+                            <input type="hidden" id="impegnoGiorniExtra" value="">
+                            <div id="impegnoGiorniExtraList" class="mt-2"></div>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Note</label>
                             <textarea class="form-control" id="impegnoNote" rows="2"></textarea>
                         </div>

@@ -124,7 +124,17 @@ class CalendarioStorage {
             localStorage.setItem(key, JSON.stringify(data));
             return true;
         } catch (e) {
-            console.error(`Errore salvataggio ${key}:`, e);
+            console.error(`❌ Errore salvataggio ${key}:`, e);
+            
+            // Mostra errore all'utente
+            if (e.name === 'QuotaExceededError') {
+                alert('❌ Errore: localStorage pieno! Elimina alcuni dati per continuare.');
+            } else if (e.name === 'SecurityError' || e.message.includes('denied')) {
+                alert('❌ Errore: localStorage è disabilitato nel tuo browser o non autorizzato');
+            } else {
+                alert(`❌ Errore nel salvataggio: ${e.message}`);
+            }
+            
             return false;
         }
     }
@@ -271,7 +281,16 @@ class CalendarioStorage {
             modificato_il: new Date().toISOString()
         };
         impegni.push(nuovoImpegno);
-        this.saveData(this.KEYS.IMPEGNI, impegni);
+        
+        // Prova a salvare
+        const salvato = this.saveData(this.KEYS.IMPEGNI, impegni);
+        if (!salvato) {
+            return {
+                error: true,
+                message: 'Errore nel salvataggio dei dati'
+            };
+        }
+        
         this.logAction('add_impegno', `Aggiunto impegno ID: ${nuovoImpegno.id}`);
         return {
             error: false,
@@ -311,7 +330,16 @@ class CalendarioStorage {
                 ...data,
                 modificato_il: new Date().toISOString()
             };
-            this.saveData(this.KEYS.IMPEGNI, impegni);
+            
+            // Prova a salvare
+            const salvato = this.saveData(this.KEYS.IMPEGNI, impegni);
+            if (!salvato) {
+                return {
+                    error: true,
+                    message: 'Errore nel salvataggio dei dati'
+                };
+            }
+            
             this.logAction('update_impegno', `Modificato impegno ID: ${id}`);
             return {
                 error: false,
