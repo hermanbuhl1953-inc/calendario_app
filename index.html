@@ -907,13 +907,17 @@
     });
     
     // ========== FULLCALENDAR ==========
-    function initFullCalendar() {
+    async function initFullCalendar() {
         const calendarEl = document.getElementById('fullcalendar-view');
         if (!calendarEl || calendar) return;
         
-        const events = db.getImpegni().map(imp => {
-            const istr = db.getIstruttori().find(i => i.id === imp.istruttore_id);
-            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+        const impegni = await db.getImpegni();
+        const istruttori = await db.getIstruttori();
+        const attivita = await db.getAttivita();
+        
+        const events = (impegni || []).map(imp => {
+            const istr = istruttori.find(i => i.id === imp.istruttore_id);
+            const att = attivita.find(a => a.id === imp.attivita_id);
             return {
                 id: imp.id,
                 title: `${istr?.nome || 'N/A'} - ${att?.tipo || 'N/A'}`,
@@ -956,13 +960,13 @@
     }
     
     // ========== TIMELINE CON FILTRI ==========
-    function initTimeline() {
+    async function initTimeline() {
         const container = document.getElementById('timeline-calendar');
         if (!container) return;
         
         // Genera timeline semplificata (come calendario originale ma con più opzioni)
-        const impegni = db.getImpegni();
-        const istruttori = db.getIstruttori();
+        const impegni = await db.getImpegni();
+        const istruttori = await db.getIstruttori();
         
         let html = '<p class="text-muted">Timeline view: Filtra per vedere meno dati. Vista completa disponibile nella versione Flask.</p>';
         html += `<p><strong>${impegni.length} impegni</strong> totali da <strong>${istruttori.length} istruttori</strong></p>`;
@@ -970,25 +974,29 @@
         container.innerHTML = html;
     }
     
-    function applicaFiltriTimeline() {
+    async function applicaFiltriTimeline() {
         const area = document.getElementById('filtroArea').value;
         const mese = document.getElementById('filtroMese').value;
         const cerca = document.getElementById('filtroCerca').value.toLowerCase();
         const tipo = document.getElementById('filtroTipo').value;
         
-        const istruttori = db.getIstruttori().filter(i => {
+        const allIstruttori = await db.getIstruttori();
+        const allImpegni = await db.getImpegni();
+        const allAttivita = await db.getAttivita();
+        
+        const istruttori = (allIstruttori || []).filter(i => {
             if (area && i.area !== area) return false;
             if (cerca && !i.nome.toLowerCase().includes(cerca)) return false;
             return true;
         });
         
-        const impegni = db.getImpegni().filter(imp => {
+        const impegni = (allImpegni || []).filter(imp => {
             if (mese) {
                 const impMese = new Date(imp.data_inizio).getMonth() + 1;
                 if (impMese !== parseInt(mese)) return false;
             }
             if (tipo) {
-                const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+                const att = allAttivita.find(a => a.id === imp.attivita_id);
                 if (!att || !att.tipo.includes(tipo)) return false;
             }
             return istruttori.some(i => i.id === imp.istruttore_id);
@@ -1013,9 +1021,9 @@
     }
     
     // ========== VISTA LISTA ==========
-    function initLista() {
-        listaImpegni = db.getImpegni();
-        renderLista();
+    async function initLista() {
+        listaImpegni = await db.getImpegni() || [];
+        await renderLista();
     }
     
     function sortListaBy(column) {
@@ -1070,17 +1078,20 @@
         renderLista();
     }
     
-    function renderLista() {
+    async function renderLista() {
         const tbody = document.getElementById('tbody-lista');
         if (!tbody) return;
         
+        const istruttori = await db.getIstruttori() || [];
+        const attivita = await db.getAttivita() || [];
+        
         const start = (currentPageLista - 1) * itemsPerPageLista;
         const end = start + itemsPerPageLista;
-        const pageItems = listaImpegni.slice(start, end);
+        const pageItems = (listaImpegni || []).slice(start, end);
         
         tbody.innerHTML = pageItems.map(imp => {
-            const istr = db.getIstruttori().find(i => i.id === imp.istruttore_id);
-            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+            const istr = istruttori.find(i => i.id === imp.istruttore_id);
+            const att = attivita.find(a => a.id === imp.attivita_id);
             const giorni = calcGiorniLav(imp.data_inizio, imp.data_fine);
             const badgeColor = {Scorta: 'danger', Condotta: 'primary', Verifica: 'success', Manovra: 'warning'}[istr?.area] || 'secondary';
             
@@ -1126,12 +1137,13 @@
     }
     
     // ========== DASHBOARD ==========
-    function initDashboard() {
+    async function initDashboard() {
         const oggi = new Date();
         oggi.setHours(0,0,0,0);
         
-        const impegni = db.getImpegni();
-        const istruttori = db.getIstruttori();
+        const impegni = await db.getImpegni() || [];
+        const istruttori = await db.getIstruttori() || [];
+        const attivita = await db.getAttivita() || [];
         
         // Impegni oggi
         const impegniOggi = impegni.filter(imp => {
@@ -1143,7 +1155,7 @@
         document.getElementById('widget-oggi').textContent = impegniOggi.length;
         document.getElementById('widget-oggi-lista').innerHTML = impegniOggi.slice(0,5).map(imp => {
             const istr = istruttori.find(i => i.id === imp.istruttore_id);
-            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+            const att = attivita.find(a => a.id === imp.attivita_id);
             return `<li>${istr?.nome || 'N/A'} - ${att?.tipo || 'N/A'}</li>`;
         }).join('');
         
@@ -1188,7 +1200,7 @@
         // Per tipo
         const perTipo = {CORSO: 0, FERIE: 0, MALATTIA: 0, COMMISSIONE: 0, RIUNIONE: 0};
         impegni.forEach(imp => {
-            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+            const att = attivita.find(a => a.id === imp.attivita_id);
             const tipo = att?.tipo.toUpperCase() || '';
             if (tipo.includes('CORSO')) perTipo.CORSO++;
             else if (tipo.includes('FERIE')) perTipo.FERIE++;
@@ -1207,13 +1219,17 @@
         initMiniCalendar();
     }
     
-    function initMiniCalendar() {
+    async function initMiniCalendar() {
         const calendarEl = document.getElementById('dashboard-mini-calendar');
         if (!calendarEl) return;
         
-        const events = db.getImpegni().map(imp => {
-            const istr = db.getIstruttori().find(i => i.id === imp.istruttore_id);
-            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+        const impegni = await db.getImpegni() || [];
+        const istruttori = await db.getIstruttori() || [];
+        const attivita = await db.getAttivita() || [];
+        
+        const events = impegni.map(imp => {
+            const istr = istruttori.find(i => i.id === imp.istruttore_id);
+            const att = attivita.find(a => a.id === imp.attivita_id);
             return {
                 title: `${istr?.nome || 'N/A'} - ${att?.tipo || 'N/A'}`,
                 start: imp.data_inizio,

@@ -598,6 +598,61 @@ class SharePointDatabase {
         return this.cache.aree || await this.getItems('aree');
     }
     
+    // ============================================
+    // AUTENTICAZIONE (Compatibilità con db-storage)
+    // ============================================
+    
+    isLoggedIn() {
+        // Su SharePoint, autenticazione è gestita da Azure AD
+        // Se siamo qui, siamo già autenticati
+        if (this.offlineMode) {
+            // In modalità offline, usa localStorage
+            return localStorage.getItem('currentUser') !== null;
+        }
+        return true; // SharePoint = sempre autenticato
+    }
+    
+    getCurrentUser() {
+        if (this.offlineMode) {
+            const userData = localStorage.getItem('currentUser');
+            return userData ? JSON.parse(userData) : null;
+        }
+        // Su SharePoint, restituisci utente default
+        return {
+            username: 'admin',
+            nome: 'Utente SharePoint',
+            ruolo: 'Admin',
+            area: null
+        };
+    }
+    
+    login(username, password) {
+        // SharePoint usa Azure AD, non c'è login locale
+        if (this.offlineMode) {
+            // Modalità offline: fake login
+            if (username === 'admin' && password === 'admin') {
+                const user = {
+                    username: 'admin',
+                    nome: 'Admin Locale',
+                    ruolo: 'Admin',
+                    area: null
+                };
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                return { success: true, user };
+            }
+            return { success: false, message: 'Credenziali non valide' };
+        }
+        // SharePoint: sempre autenticato
+        return { success: true, user: this.getCurrentUser() };
+    }
+    
+    logout() {
+        if (this.offlineMode) {
+            localStorage.removeItem('currentUser');
+        }
+        // SharePoint: non possiamo fare logout (gestito da Azure AD)
+    }
+    
     async addArea(nome, colore) {
         return await this.createItem('aree', { nome, colore });
     }
