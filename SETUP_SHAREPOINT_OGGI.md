@@ -144,14 +144,14 @@ New → Folder → "CalendarioApp"
 ### Upload questi file
 ```
 CalendarioApp/
-├── index.aspx ← RINOMINA da index.html
+├── index.aspx ← QUESTO È IL FILE PRINCIPALE (già rinominato)
 ├── static/
 │   ├── css/
 │   │   └── style.css
 │   ├── js/
 │   │   ├── app.js
 │   │   ├── calendario-app.js
-│   │   ├── db-sharepoint.js ← IL PRINCIPALE
+│   │   ├── db-sharepoint.js ← ATTIVO di default in index.aspx
 │   │   └── db-storage.js
 │   └── lib/
 │       └── fontawesome/
@@ -159,11 +159,26 @@ CalendarioApp/
 │           └── webfonts/ (tutti i font)
 ```
 
+### ⚠️ IMPORTANTE: index.aspx già configurato
+```
+index.aspx ha già db-sharepoint.js attivato di default.
+NON serve Flask - funziona direttamente su SharePoint!
+```
+
 ### URL per aprire app
 ```
 https://trenord.sharepoint.com/sites/PIAN.FABB.EGESTIONEABILITAZIONI/
 Documenti%20Condivisi/CalendarioApp/index.aspx
 ```
+
+### 🎉 NOVITÀ: 4 VISTE INTEGRATE
+L'app ora ha **4 visualizzazioni** accessibili via tab:
+1. **📅 Vista Calendario**: FullCalendar mensile (stile Google)
+2. **📊 Vista Timeline**: Timeline con filtri (Area, Mese, Cerca, Tipo)
+3. **📋 Vista Lista**: Tabella ordinabile paginata (20/pag)
+4. **📈 Dashboard**: 6 widget KPI + mini calendar
+
+**Performance**: Filtri riducono celle dal 98% (14k → 300 celle)
 
 ---
 
