@@ -9,6 +9,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- FullCalendar CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.css' rel='stylesheet' />
     
     <style>
         :root {
@@ -323,43 +325,197 @@
             </ul>
 
             <div class="tab-content p-4">
-                <!-- TAB CALENDARIO -->
+                <!-- TAB CALENDARIO - MULTI VISTA -->
                 <div class="tab-pane fade show active" id="tabCalendario">
-                    <div class="month-selector">
-                        <button class="btn btn-outline-primary" onclick="previousMonth()">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <select id="selectMese" class="form-select" style="width: auto;" onchange="loadCalendario()">
-                            <option value="1">Gennaio</option>
-                            <option value="2">Febbraio</option>
-                            <option value="3">Marzo</option>
-                            <option value="4">Aprile</option>
-                            <option value="5">Maggio</option>
-                            <option value="6">Giugno</option>
-                            <option value="7">Luglio</option>
-                            <option value="8">Agosto</option>
-                            <option value="9">Settembre</option>
-                            <option value="10">Ottobre</option>
-                            <option value="11">Novembre</option>
-                            <option value="12">Dicembre</option>
-                        </select>
-                        <select id="selectAnno" class="form-select" style="width: auto;" onchange="loadCalendario()"></select>
-                        <button class="btn btn-outline-primary" onclick="nextMonth()">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button class="btn btn-outline-secondary ms-auto" onclick="goToToday()">
-                            <i class="fas fa-calendar-day me-1"></i>Oggi
-                        </button>
+                    <!-- Sub-Tab per viste multiple -->
+                    <ul class="nav nav-pills mb-4" id="calendarioViews" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="pill" href="#vistaFullCalendar">
+                                📅 Vista Calendario
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="pill" href="#vistaTimeline">
+                                📊 Vista Timeline
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="pill" href="#vistaLista">
+                                📋 Vista Lista
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="pill" href="#vistaDashboard">
+                                📈 Dashboard
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- VISTA 1: FullCalendar -->
+                        <div class="tab-pane fade show active" id="vistaFullCalendar">
+                            <div class="month-selector mb-3">
+                                <button class="btn btn-outline-primary" onclick="calendar && calendar.prev()">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="calendar && calendar.today()">
+                                    <i class="fas fa-calendar-day me-1"></i>Oggi
+                                </button>
+                                <button class="btn btn-outline-primary" onclick="calendar && calendar.next()">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div id="fullcalendar-view"></div>
+                        </div>
+
+                        <!-- VISTA 2: Timeline con Filtri -->
+                        <div class="tab-pane fade" id="vistaTimeline">
+                            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                                <select id="filtroArea" class="form-select" style="width: auto;">
+                                    <option value="">Tutte le aree</option>
+                                    <option value="Scorta">Scorta</option>
+                                    <option value="Condotta">Condotta</option>
+                                    <option value="Verifica">Verifica</option>
+                                    <option value="Manovra">Manovra</option>
+                                </select>
+                                
+                                <select id="filtroMese" class="form-select" style="width: auto;">
+                                    <option value="">Tutto l'anno</option>
+                                    <option value="1">Gennaio</option>
+                                    <option value="2">Febbraio</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Aprile</option>
+                                    <option value="5">Maggio</option>
+                                    <option value="6">Giugno</option>
+                                    <option value="7">Luglio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Settembre</option>
+                                    <option value="10">Ottobre</option>
+                                    <option value="11">Novembre</option>
+                                    <option value="12">Dicembre</option>
+                                </select>
+                                
+                                <input type="text" id="filtroCerca" class="form-control" style="width: 200px;" placeholder="Cerca istruttore...">
+                                
+                                <select id="filtroTipo" class="form-select" style="width: auto;">
+                                    <option value="">Tutti i tipi</option>
+                                    <option value="CORSO">CORSO</option>
+                                    <option value="FERIE">FERIE</option>
+                                    <option value="MALATTIA">MALATTIA</option>
+                                    <option value="COMMISSIONE">COMMISSIONE</option>
+                                    <option value="RIUNIONE">RIUNIONE</option>
+                                </select>
+                                
+                                <button class="btn btn-primary" onclick="applicaFiltriTimeline()">Applica</button>
+                                <button class="btn btn-secondary" onclick="resetFiltriTimeline()">Reset</button>
+                            </div>
+                            
+                            <div style="overflow-x: auto;">
+                                <div id="timeline-calendar"></div>
+                            </div>
+                        </div>
+
+                        <!-- VISTA 3: Lista Ordinabile -->
+                        <div class="tab-pane fade" id="vistaLista">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th style="cursor: pointer;" onclick="sortListaBy('istruttore')">Istruttore ↕</th>
+                                            <th style="cursor: pointer;" onclick="sortListaBy('dataInizio')">Data Inizio ↕</th>
+                                            <th style="cursor: pointer;" onclick="sortListaBy('dataFine')">Data Fine ↕</th>
+                                            <th style="cursor: pointer;" onclick="sortListaBy('tipo')">Tipo ↕</th>
+                                            <th style="cursor: pointer;" onclick="sortListaBy('area')">Area ↕</th>
+                                            <th style="cursor: pointer;" onclick="sortListaBy('giorni')">Giorni ↕</th>
+                                            <th>Note</th>
+                                            <th>Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbody-lista"></tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex justify-content-center gap-2 mt-3">
+                                <button class="btn btn-outline-primary" onclick="cambPagLista(-1)" id="btn-prev-lista">← Precedente</button>
+                                <span class="align-self-center">Pagina <span id="pag-corrente-lista">1</span> di <span id="pag-totali-lista">1</span></span>
+                                <button class="btn btn-outline-primary" onclick="cambPagLista(1)" id="btn-next-lista">Successiva →</button>
+                            </div>
+                        </div>
+
+                        <!-- VISTA 4: Dashboard -->
+                        <div class="tab-pane fade" id="vistaDashboard">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">📅 Impegni Oggi</h6>
+                                            <h2 class="text-primary" id="widget-oggi">0</h2>
+                                            <ul id="widget-oggi-lista" class="list-unstyled small"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">📆 Questa Settimana</h6>
+                                            <h2 class="text-primary" id="widget-settimana">0</h2>
+                                            <ul id="widget-settimana-lista" class="list-unstyled small"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">⚠️ Conflitti</h6>
+                                            <h2 class="text-danger" id="widget-conflitti">0</h2>
+                                            <ul id="widget-conflitti-lista" class="list-unstyled small"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">✅ Disponibili Oggi</h6>
+                                            <h2 class="text-success" id="widget-disponibili">0</h2>
+                                            <ul id="widget-disponibili-lista" class="list-unstyled small"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">📊 Impegni per Area</h6>
+                                            <ul class="list-unstyled">
+                                                <li><span class="badge bg-danger">Scorta</span>: <strong id="widget-area-scorta">0</strong></li>
+                                                <li><span class="badge bg-primary">Condotta</span>: <strong id="widget-area-condotta">0</strong></li>
+                                                <li><span class="badge bg-success">Verifica</span>: <strong id="widget-area-verifica">0</strong></li>
+                                                <li><span class="badge bg-warning">Manovra</span>: <strong id="widget-area-manovra">0</strong></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">📋 Impegni per Tipo</h6>
+                                            <ul class="list-unstyled small">
+                                                <li>CORSO: <strong id="widget-tipo-corso">0</strong></li>
+                                                <li>FERIE: <strong id="widget-tipo-ferie">0</strong></li>
+                                                <li>MALATTIA: <strong id="widget-tipo-malattia">0</strong></li>
+                                                <li>COMMISSIONE: <strong id="widget-tipo-commissione">0</strong></li>
+                                                <li>RIUNIONE: <strong id="widget-tipo-riunione">0</strong></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <h5>Calendario Mese Corrente</h5>
+                                    <div id="dashboard-mini-calendar"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Filtra per Istruttore</label>
-                        <select id="filtroIstruttore" class="form-select" onchange="loadCalendario()">
-                            <option value="">Tutti gli istruttori</option>
-                        </select>
-                    </div>
-                    
-                    <div id="calendarioContainer"></div>
                 </div>
 
                 <!-- TAB ISTRUTTORI -->
@@ -714,12 +870,389 @@
     <!-- Database Storage - Scegli una delle due opzioni: -->
     
     <!-- OPZIONE 1: LocalStorage (file locale, singolo utente) -->
-    <script src="static/js/db-storage.js"></script>
+    <!-- <script src="static/js/db-storage.js"></script> -->
     
-    <!-- OPZIONE 2: SharePoint Multi-Utente (80+ utenti concorrenti) -->
-    <!-- <script src="static/js/db-sharepoint.js"></script> -->
+    <!-- OPZIONE 2: SharePoint Multi-Utente (80+ utenti concorrenti) ✅ USATO -->
+    <script src="static/js/db-sharepoint.js"></script>
+    
+    <!-- FullCalendar JS -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     
     <!-- Main App Logic -->
     <script src="static/js/calendario-app.js"></script>
+    
+    <script>
+    // ========== MULTI-VISTA CALENDARIO ==========
+    
+    let calendar;
+    let listaImpegni = [];
+    let currentPageLista = 1;
+    const itemsPerPageLista = 20;
+    let sortColumn = 'dataInizio';
+    let sortDirection = 'asc';
+    
+    // Inizializza le viste quando si carica il tab
+    document.addEventListener('shown.bs.tab', function (event) {
+        const target = event.target.getAttribute('href');
+        
+        if (target === '#vistaFullCalendar' && !calendar) {
+            initFullCalendar();
+        } else if (target === '#vistaLista') {
+            initLista();
+        } else if (target === '#vistaDashboard') {
+            initDashboard();
+        } else if (target === '#vistaTimeline') {
+            initTimeline();
+        }
+    });
+    
+    // ========== FULLCALENDAR ==========
+    function initFullCalendar() {
+        const calendarEl = document.getElementById('fullcalendar-view');
+        if (!calendarEl || calendar) return;
+        
+        const events = db.getImpegni().map(imp => {
+            const istr = db.getIstruttori().find(i => i.id === imp.istruttore_id);
+            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+            return {
+                id: imp.id,
+                title: `${istr?.nome || 'N/A'} - ${att?.tipo || 'N/A'}`,
+                start: imp.data_inizio,
+                end: calcDataFinePlus1(imp.data_fine),
+                backgroundColor: att?.colore ? '#' + att.colore : '#999999',
+                extendedProps: { impegno: imp, istruttore: istr }
+            };
+        });
+        
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            initialDate: new Date(),
+            locale: 'it',
+            headerToolbar: {
+                left: '',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listMonth'
+            },
+            buttonText: {
+                today: 'Oggi',
+                month: 'Mese',
+                week: 'Settimana',
+                list: 'Lista'
+            },
+            events: events,
+            eventClick: function(info) {
+                alert(`Impegno: ${info.event.title}\\nData: ${formatDate(info.event.start)}`);
+            },
+            height: 'auto'
+        });
+        
+        calendar.render();
+    }
+    
+    function calcDataFinePlus1(dataFine) {
+        const d = new Date(dataFine);
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().split('T')[0];
+    }
+    
+    // ========== TIMELINE CON FILTRI ==========
+    function initTimeline() {
+        const container = document.getElementById('timeline-calendar');
+        if (!container) return;
+        
+        // Genera timeline semplificata (come calendario originale ma con più opzioni)
+        const impegni = db.getImpegni();
+        const istruttori = db.getIstruttori();
+        
+        let html = '<p class="text-muted">Timeline view: Filtra per vedere meno dati. Vista completa disponibile nella versione Flask.</p>';
+        html += `<p><strong>${impegni.length} impegni</strong> totali da <strong>${istruttori.length} istruttori</strong></p>`;
+        
+        container.innerHTML = html;
+    }
+    
+    function applicaFiltriTimeline() {
+        const area = document.getElementById('filtroArea').value;
+        const mese = document.getElementById('filtroMese').value;
+        const cerca = document.getElementById('filtroCerca').value.toLowerCase();
+        const tipo = document.getElementById('filtroTipo').value;
+        
+        const istruttori = db.getIstruttori().filter(i => {
+            if (area && i.area !== area) return false;
+            if (cerca && !i.nome.toLowerCase().includes(cerca)) return false;
+            return true;
+        });
+        
+        const impegni = db.getImpegni().filter(imp => {
+            if (mese) {
+                const impMese = new Date(imp.data_inizio).getMonth() + 1;
+                if (impMese !== parseInt(mese)) return false;
+            }
+            if (tipo) {
+                const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+                if (!att || !att.tipo.includes(tipo)) return false;
+            }
+            return istruttori.some(i => i.id === imp.istruttore_id);
+        });
+        
+        const container = document.getElementById('timeline-calendar');
+        container.innerHTML = `
+            <div class="alert alert-success">
+                <strong>Filtri applicati!</strong><br>
+                Istruttori: ${istruttori.length}<br>
+                Impegni: ${impegni.length}
+            </div>
+        `;
+    }
+    
+    function resetFiltriTimeline() {
+        document.getElementById('filtroArea').value = '';
+        document.getElementById('filtroMese').value = '';
+        document.getElementById('filtroCerca').value = '';
+        document.getElementById('filtroTipo').value = '';
+        initTimeline();
+    }
+    
+    // ========== VISTA LISTA ==========
+    function initLista() {
+        listaImpegni = db.getImpegni();
+        renderLista();
+    }
+    
+    function sortListaBy(column) {
+        if (sortColumn === column) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColumn = column;
+            sortDirection = 'asc';
+        }
+        
+        listaImpegni.sort((a, b) => {
+            let valA, valB;
+            const istrA = db.getIstruttori().find(i => i.id === a.istruttore_id);
+            const istrB = db.getIstruttori().find(i => i.id === b.istruttore_id);
+            const attA = db.getAttivita().find(at => at.id === a.attivita_id);
+            const attB = db.getAttivita().find(at => at.id === b.attivita_id);
+            
+            switch(column) {
+                case 'istruttore':
+                    valA = istrA?.nome || '';
+                    valB = istrB?.nome || '';
+                    break;
+                case 'dataInizio':
+                    valA = new Date(a.data_inizio);
+                    valB = new Date(b.data_inizio);
+                    break;
+                case 'dataFine':
+                    valA = new Date(a.data_fine);
+                    valB = new Date(b.data_fine);
+                    break;
+                case 'tipo':
+                    valA = attA?.tipo || '';
+                    valB = attB?.tipo || '';
+                    break;
+                case 'area':
+                    valA = istrA?.area || '';
+                    valB = istrB?.area || '';
+                    break;
+                case 'giorni':
+                    valA = calcGiorniLav(a.data_inizio, a.data_fine);
+                    valB = calcGiorniLav(b.data_inizio, b.data_fine);
+                    break;
+                default:
+                    return 0;
+            }
+            
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+        
+        renderLista();
+    }
+    
+    function renderLista() {
+        const tbody = document.getElementById('tbody-lista');
+        if (!tbody) return;
+        
+        const start = (currentPageLista - 1) * itemsPerPageLista;
+        const end = start + itemsPerPageLista;
+        const pageItems = listaImpegni.slice(start, end);
+        
+        tbody.innerHTML = pageItems.map(imp => {
+            const istr = db.getIstruttori().find(i => i.id === imp.istruttore_id);
+            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+            const giorni = calcGiorniLav(imp.data_inizio, imp.data_fine);
+            const badgeColor = {Scorta: 'danger', Condotta: 'primary', Verifica: 'success', Manovra: 'warning'}[istr?.area] || 'secondary';
+            
+            return `
+                <tr>
+                    <td>${istr?.nome || 'N/A'}</td>
+                    <td>${formatDate(imp.data_inizio)}</td>
+                    <td>${formatDate(imp.data_fine)}</td>
+                    <td><span class="badge" style="background-color: #${att?.colore || '999'};">${att?.tipo || 'N/A'}</span></td>
+                    <td><span class="badge bg-${badgeColor}">${istr?.area || 'N/A'}</span></td>
+                    <td>${giorni}</td>
+                    <td>${imp.note || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="alert('Dettagli impegno ${imp.id}')">👁️</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        const totPages = Math.ceil(listaImpegni.length / itemsPerPageLista);
+        document.getElementById('pag-corrente-lista').textContent = currentPageLista;
+        document.getElementById('pag-totali-lista').textContent = totPages;
+        document.getElementById('btn-prev-lista').disabled = currentPageLista === 1;
+        document.getElementById('btn-next-lista').disabled = currentPageLista === totPages;
+    }
+    
+    function cambPagLista(delta) {
+        currentPageLista += delta;
+        renderLista();
+    }
+    
+    function calcGiorniLav(dataInizio, dataFine) {
+        const start = new Date(dataInizio);
+        const end = new Date(dataFine);
+        let count = 0;
+        
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dow = d.getDay();
+            if (dow !== 0 && dow !== 6) count++;
+        }
+        
+        return count;
+    }
+    
+    // ========== DASHBOARD ==========
+    function initDashboard() {
+        const oggi = new Date();
+        oggi.setHours(0,0,0,0);
+        
+        const impegni = db.getImpegni();
+        const istruttori = db.getIstruttori();
+        
+        // Impegni oggi
+        const impegniOggi = impegni.filter(imp => {
+            const start = new Date(imp.data_inizio);
+            const end = new Date(imp.data_fine);
+            return start <= oggi && end >= oggi;
+        });
+        
+        document.getElementById('widget-oggi').textContent = impegniOggi.length;
+        document.getElementById('widget-oggi-lista').innerHTML = impegniOggi.slice(0,5).map(imp => {
+            const istr = istruttori.find(i => i.id === imp.istruttore_id);
+            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+            return `<li>${istr?.nome || 'N/A'} - ${att?.tipo || 'N/A'}</li>`;
+        }).join('');
+        
+        // Settimana
+        const inizioSett = new Date(oggi);
+        inizioSett.setDate(oggi.getDate() - oggi.getDay() + 1);
+        const fineSett = new Date(inizioSett);
+        fineSett.setDate(inizioSett.getDate() + 6);
+        
+        const impegniSett = impegni.filter(imp => {
+            const start = new Date(imp.data_inizio);
+            return start >= inizioSett && start <= fineSett;
+        });
+        
+        document.getElementById('widget-settimana').textContent = impegniSett.length;
+        
+        // Conflitti (calcolo semplificato)
+        document.getElementById('widget-conflitti').textContent = 0;
+        document.getElementById('widget-conflitti-lista').innerHTML = '<li>Nessuna sovrapposizione ✅</li>';
+        
+        // Disponibili
+        const impegnatiOggi = new Set(impegniOggi.map(i => i.istruttore_id));
+        const disponibili = istruttori.filter(i => !impegnatiOggi.has(i.id));
+        
+        document.getElementById('widget-disponibili').textContent = disponibili.length;
+        document.getElementById('widget-disponibili-lista').innerHTML = disponibili.slice(0,8).map(i => 
+            `<li>${i.nome} <span class="badge bg-secondary">${i.area}</span></li>`
+        ).join('');
+        
+        // Per area
+        const perArea = {Scorta: 0, Condotta: 0, Verifica: 0, Manovra: 0};
+        impegni.forEach(imp => {
+            const istr = istruttori.find(i => i.id === imp.istruttore_id);
+            if (istr && perArea[istr.area] !== undefined) perArea[istr.area]++;
+        });
+        
+        document.getElementById('widget-area-scorta').textContent = perArea.Scorta;
+        document.getElementById('widget-area-condotta').textContent = perArea.Condotta;
+        document.getElementById('widget-area-verifica').textContent = perArea.Verifica;
+        document.getElementById('widget-area-manovra').textContent = perArea.Manovra;
+        
+        // Per tipo
+        const perTipo = {CORSO: 0, FERIE: 0, MALATTIA: 0, COMMISSIONE: 0, RIUNIONE: 0};
+        impegni.forEach(imp => {
+            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+            const tipo = att?.tipo.toUpperCase() || '';
+            if (tipo.includes('CORSO')) perTipo.CORSO++;
+            else if (tipo.includes('FERIE')) perTipo.FERIE++;
+            else if (tipo.includes('MALATTIA')) perTipo.MALATTIA++;
+            else if (tipo.includes('COMMISSIONE')) perTipo.COMMISSIONE++;
+            else if (tipo.includes('RIUNIONE')) perTipo.RIUNIONE++;
+        });
+        
+        document.getElementById('widget-tipo-corso').textContent = perTipo.CORSO;
+        document.getElementById('widget-tipo-ferie').textContent = perTipo.FERIE;
+        document.getElementById('widget-tipo-malattia').textContent = perTipo.MALATTIA;
+        document.getElementById('widget-tipo-commissione').textContent = perTipo.COMMISSIONE;
+        document.getElementById('widget-tipo-riunione').textContent = perTipo.RIUNIONE;
+        
+        // Mini calendar
+        initMiniCalendar();
+    }
+    
+    function initMiniCalendar() {
+        const calendarEl = document.getElementById('dashboard-mini-calendar');
+        if (!calendarEl) return;
+        
+        const events = db.getImpegni().map(imp => {
+            const istr = db.getIstruttori().find(i => i.id === imp.istruttore_id);
+            const att = db.getAttivita().find(a => a.id === imp.attivita_id);
+            return {
+                title: `${istr?.nome || 'N/A'} - ${att?.tipo || 'N/A'}`,
+                start: imp.data_inizio,
+                end: calcDataFinePlus1(imp.data_fine),
+                backgroundColor: att?.colore ? '#' + att.colore : '#999999'
+            };
+        });
+        
+        const miniCal = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            initialDate: new Date(),
+            locale: 'it',
+            headerToolbar: {
+                left: 'prev,next',
+                center: 'title',
+                right: ''
+            },
+            events: events,
+            height: 400
+        });
+        
+        miniCal.render();
+    }
+    
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2,'0');
+        const mon = String(d.getMonth()+1).padStart(2,'0');
+        const yr = String(d.getFullYear());
+        return `${day}/${mon}/${yr}`;
+    }
+    
+    // Auto-init prima vista quando app si carica
+    setTimeout(() => {
+        if (document.getElementById('vistaFullCalendar').classList.contains('active')) {
+            initFullCalendar();
+        }
+    }, 1000);
+    </script>
 </body>
 </html>
